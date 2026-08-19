@@ -1,0 +1,21 @@
+{
+  "name": "B2B Nexus",
+  "short_name": "B2BNexus",
+  "description": "B2B Nexus is your trusted partner for bulk business orders. Secure login, comprehensive product catalog, and streamlined order management for business clients.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4F46E5",
+  "icons": [
+    {
+      "src": "/icons/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

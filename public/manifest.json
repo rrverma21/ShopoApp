@@ -1,0 +1,38 @@
+{
+  "name": "ShopoApp",
+  "short_name": "ShopoApp",
+  "description": "The All-In-One Retail Operating System for businesses.",
+  "start_url": "/",
+  "display": "standalone",
+  "scope": "/",
+  "theme_color": "#FF6B35",
+  "background_color": "#FFFFFF",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://horizons-cdn.hostinger.com/3c38fd60-a24a-4d78-a3d8-58678655dafd/89c55697d90707990e72df5e3fb6cbc9.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://horizons-cdn.hostinger.com/3c38fd60-a24a-4d78-a3d8-58678655dafd/89c55697d90707990e72df5e3fb6cbc9.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://horizons-cdn.hostinger.com/3c38fd60-a24a-4d78-a3d8-58678655dafd/89c55697d90707990e72df5e3fb6cbc9.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "https://horizons-cdn.hostinger.com/3c38fd60-a24a-4d78-a3d8-58678655dafd/89c55697d90707990e72df5e3fb6cbc9.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["productivity", "business"]
+}

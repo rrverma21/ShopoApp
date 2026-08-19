@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
+    <link rel="apple-touch-icon" href="https://horizons-cdn.hostinger.com/3c38fd60-a24a-4d78-a3d8-58678655dafd/89c55697d90707990e72df5e3fb6cbc9.png">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#FF6B35">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="ShopoApp">
+    <meta name="application-name" content="ShopoApp">
+    <link rel="manifest" href="/manifest.json">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <title>ShopoApp - The All-In-One Retail OS</title>
+    <style>
+      /* Professional Splash Screen Styles */
+      #splash-screen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background-color: #0f172a; /* Slate 950/900 dark theme */
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        transition: opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1), visibility 0.6s linear;
+        opacity: 1;
+        visibility: visible;
+      }
+      
+      #splash-screen.fade-out {
+        opacity: 0;
+        visibility: hidden;
+      }
+
+      .splash-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 2rem;
+      }
+
+      .splash-logo {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        font-size: 3rem;
+        font-weight: 800;
+        letter-spacing: -0.05em;
+        background: linear-gradient(135deg, #FF6B35 0%, #3b82f6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        margin-bottom: 0.5rem;
+        text-align: center;
+        filter: drop-shadow(0 0 20px rgba(255, 107, 53, 0.3));
+      }
+
+      .splash-spinner {
+        width: 48px;
+        height: 48px;
+        border: 3px solid rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        border-top-color: #FF6B35;
+        border-right-color: #3b82f6;
+        animation: splash-spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        box-shadow: 0 0 15px rgba(255, 107, 53, 0.2);
+      }
+
+      .splash-text {
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        color: #94a3b8; /* Slate 400 */
+        font-size: 0.875rem;
+        font-weight: 500;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        animation: splash-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        margin-top: 1rem;
+      }
+
+      @keyframes splash-spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+
+      @keyframes splash-pulse {
+        0%, 100% { opacity: 0.5; }
+        50% { opacity: 1; }
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #0f172a;
+        overflow: hidden; /* Prevent scrolling during splash */
+      }
+    </style>
+  </head>
+  <body>
+    <div id="splash-screen">
+      <div class="splash-content">
+        <div class="splash-logo">ShopoApp</div>
+        <div class="splash-spinner"></div>
+        <div class="splash-text">Initializing Retail OS...</div>
+      </div>
+    </div>
+
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

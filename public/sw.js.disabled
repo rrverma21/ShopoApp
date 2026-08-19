@@ -1,0 +1,111 @@
+/* eslint-disable no-restricted-globals */
+/* global clients */
+const STATIC_CACHE = 'shopoapp-static-v1';
+const DYNAMIC_CACHE = 'shopoapp-dynamic-v1';
+
+const STATIC_ASSETS = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/favicon.svg',
+  '/icon-192x192.svg',
+  '/icon-512x512.svg'
+];
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(STATIC_CACHE).then((cache) => {
+      return cache.addAll(STATIC_ASSETS);
+    })
+  );
+  self.skipWaiting();
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(
+        keys.map((key) => {
+          if (key !== STATIC_CACHE && key !== DYNAMIC_CACHE) {
+            return caches.delete(key);
+          }
+        })
+      );
+    })
+  );
+  self.clients.claim();
+});
+
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  const url = new URL(request.url);
+
+  // Network-first for API calls
+  if (url.pathname.startsWith('/api') || url.hostname.includes('supabase.co')) {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(DYNAMIC_CACHE).then((cache) => {
+            cache.put(request, clone);
+          });
+          return response;
+        })
+        .catch(() => caches.match(request))
+    );
+    return;
+  }
+
+  // Cache-first for static assets
+  event.respondWith(
+    caches.match(request).then((cachedResponse) => {
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+      return fetch(request).then((networkResponse) => {
+        if (!networkResponse || networkResponse.status !== 200 || networkResponse.type !== 'basic') {
+          return networkResponse;
+        }
+        const clone = networkResponse.clone();
+        caches.open(STATIC_CACHE).then((cache) => {
+          cache.put(request, clone);
+        });
+        return networkResponse;
+      }).catch(() => {
+        // Fallback for navigation requests
+        if (request.mode === 'navigate') {
+          return caches.match('/index.html');
+        }
+      });
+    })
+  );
+});
+
+// Keep push notification handlers
+self.addEventListener('push', event => {
+  if (!event.data) return;
+  const data = event.data.json();
+  const options = {
+    body: data.body,
+    icon: data.icon || '/icon-192x192.svg',
+    badge: '/icon-192x192.svg',
+    data: { url: data.data?.url || '/' }
+  };
+  event.waitUntil(self.registration.showNotification(data.title, options));
+});
+
+self.addEventListener('notificationclick', event => {
+  event.notification.close();
+  const urlToOpen = new URL(event.notification.data.url, self.location.origin).href;
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      let client = clientList.find(c => c.focused) || clientList[0];
+      if (client) {
+        return client.focus().then(cli => {
+          if (cli.url !== urlToOpen) cli.navigate(urlToOpen);
+        });
+      }
+      return clients.openWindow(urlToOpen);
+    })
+  );
+});

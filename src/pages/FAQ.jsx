@@ -1,0 +1,148 @@
+import React from 'react';
+import { Helmet } from 'react-helmet-async';
+import { motion } from 'framer-motion';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { HelpCircle, Store, ShieldCheck, CreditCard, Truck, Users } from 'lucide-react';
+
+const faqs = [
+  {
+    category: "General",
+    icon: HelpCircle,
+    questions: [
+      {
+        q: "What is ShopoApp?",
+        a: "ShopoApp is a B2B marketplace platform operated by Ninety Layers Enterprises. We connect wholesalers with retailers and provide professional software tools like POS and Inventory Management to help businesses scale."
+      },
+      {
+        q: "Does ShopoApp sell products directly?",
+        a: "No. ShopoApp is a facilitator. We provide the digital platform for wholesalers to list products and retailers to discover them. The physical product transactions happen between the users."
+      }
+    ]
+  },
+  {
+    category: "For Wholesalers",
+    icon: Store,
+    questions: [
+      {
+        q: "How do I become a wholesaler?",
+        a: "You can sign up via the 'Become a Wholesaler' section. You'll need to provide your business details and GSTIN. Once verified, you can start listing your products."
+      },
+      {
+        q: "How do I receive payments?",
+        a: "Payments for product orders are handled via Cash on Delivery (COD). You collect the payment directly from the retailer upon delivery."
+      }
+    ]
+  },
+  {
+    category: "For Retailers",
+    icon: Users,
+    questions: [
+      {
+        q: "What tools do I get as a retailer?",
+        a: "As a member, you get access to our advanced POS system, inventory tracking, customer credit management, and your own online storefront to sell to your customers."
+      },
+      {
+        q: "Is there a trial period?",
+        a: "Yes! New retailers get a 30-day Free Trial of our Pro POS features upon registration."
+      }
+    ]
+  },
+  {
+    category: "Orders & Payments",
+    icon: CreditCard,
+    questions: [
+      {
+        q: "What is the payment model for B2B orders?",
+        a: "We strictly follow a Cash on Delivery (COD) model for marketplace transactions to ensure trust and transparency between parties."
+      },
+      {
+        q: "What are membership fees for?",
+        a: "Membership fees cover the cost of the software tools (POS, Inventory, CRM) and the maintenance of the marketplace platform. We do not take commissions on your product sales."
+      }
+    ]
+  }
+];
+
+const FAQ = () => {
+  return (
+    <div className="bg-slate-50 min-h-screen">
+      <Helmet>
+        <title>ShopoApp | Smart POS Billing, Inventory & Taxation Software</title>
+        <meta name="description" content="Find answers to frequently asked questions about ShopoApp, POS billing, inventory management, and B2B marketplace features." />
+      </Helmet>
+
+      <div className="bg-[#003D82] text-white py-20">
+        <div className="container mx-auto px-4 text-center">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <h1 className="text-4xl md:text-5xl font-bold mb-4">Frequently Asked Questions</h1>
+            <p className="text-blue-100 text-lg max-w-2xl mx-auto">
+              Everything you need to know about our platform and services.
+            </p>
+          </motion.div>
+        </div>
+      </div>
+
+      <main className="container mx-auto px-4 py-16 -mt-8">
+        <div className="max-w-4xl mx-auto">
+          {faqs.map((group, gIdx) => (
+            <motion.div 
+              key={gIdx}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: gIdx * 0.1 }}
+              className="mb-12"
+            >
+              <div className="flex items-center gap-3 mb-6">
+                <div className="p-2 bg-white rounded-lg shadow-sm">
+                  <group.icon className="w-6 h-6 text-[#FF6B35]" />
+                </div>
+                <h2 className="text-2xl font-bold text-slate-800">{group.category}</h2>
+              </div>
+
+              <Card className="border-none shadow-md overflow-hidden bg-white">
+                <Accordion type="single" collapsible className="w-full">
+                  {group.questions.map((item, qIdx) => (
+                    <AccordionItem key={qIdx} value={`item-${gIdx}-${qIdx}`} className="border-slate-100 px-6 last:border-0">
+                      <AccordionTrigger className="text-left font-semibold text-slate-700 hover:text-blue-600 py-4">
+                        {item.q}
+                      </AccordionTrigger>
+                      <AccordionContent className="text-slate-600 leading-relaxed pb-4">
+                        {item.a}
+                      </AccordionContent>
+                    </AccordionItem>
+                  ))}
+                </Accordion>
+              </Card>
+            </motion.div>
+          ))}
+
+          <div className="text-center mt-16 p-8 bg-blue-50 rounded-2xl border border-blue-100">
+            <h3 className="text-xl font-bold text-blue-900 mb-2">Still have questions?</h3>
+            <p className="text-blue-700 mb-6">We're here to help you get started or resolve any issues.</p>
+            <div className="flex flex-col sm:flex-row justify-center gap-4">
+              <a href="mailto:support@shopoapp.com">
+                <Button className="bg-[#003D82] text-white hover:bg-blue-800">Email Support</Button>
+              </a>
+              <a href="/contact">
+                <Button variant="outline" className="border-blue-200 text-blue-700 hover:bg-blue-100">Contact Us</Button>
+              </a>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+};
+
+export default FAQ;
