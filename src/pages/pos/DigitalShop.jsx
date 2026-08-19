@@ -63,7 +63,7 @@ const DigitalShop = () => {
           .single(),
         supabase
           .from('pos_retailer_settings')
-          .select('description, opening_time, closing_time, working_days, timezone, storefront_image_url')
+          .select('description, opening_time, closing_time, working_days, storefront_image_url')
           .eq('user_id', retailerId)
           .maybeSingle()
       ]);
