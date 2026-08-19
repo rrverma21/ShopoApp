@@ -36,7 +36,7 @@ const RetailerToolsPage = () => {
         const {
           count,
           error
-        } = await supabase.from('profiles').select('id', {
+        } = await supabase.from('public_shop_profiles').select('id', {
           count: 'exact',
           head: true
         }).eq('role', 'seller');
