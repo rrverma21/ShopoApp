@@ -156,7 +156,6 @@ const OffersList = lazy(() => import('@/pages/promotions/OffersList'));
 const AnalyticsDashboard = lazy(() => import('@/pages/promotions/AnalyticsDashboard'));
 const ShareOffer = lazy(() => import('@/pages/promotions/ShareOffer'));
 const PublicOfferPage = lazy(() => import('@/pages/promotions/PublicOfferPage'));
-const PromoPublicShopPage = lazy(() => import('@/pages/promotions/PublicShopPage'));
 
 // Phase 2 Promotions Pages
 const BroadcastPage = lazy(() => import('@/pages/promotions/BroadcastPage'));
@@ -454,7 +453,6 @@ const AppRoutes = () => {
                     <Route path="/promotions/templates" element={<SellerRoute><RouteSEO title="Offer Templates"><MainLayout><OfferTemplates /></MainLayout></RouteSEO></SellerRoute>} />
 
                     <Route path="/offer/:code" element={<RouteSEO title="Special Offer"><MainLayout><PublicOfferPage /></MainLayout></RouteSEO>} />
-                    <Route path="/promo-shop/:shopId" element={<RouteSEO title="Shop Offers"><MainLayout><PromoPublicShopPage /></MainLayout></RouteSEO>} />
 
                     <Route path="*" element={<RouteSEO title="ShopoApp | Smart POS Billing, Inventory & Taxation Software"><MainLayout><NotFoundPage /></MainLayout></RouteSEO>} />
                 </Routes>
