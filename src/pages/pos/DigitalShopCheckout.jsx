@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
@@ -29,6 +29,29 @@ import { useToast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 
+const createSecureCheckoutCredentials = () => {
+  if (!globalThis.crypto?.getRandomValues || !globalThis.crypto?.randomUUID || !globalThis.btoa) {
+    throw new Error('Secure checkout APIs are unavailable');
+  }
+
+  const bytes = new Uint8Array(32);
+  globalThis.crypto.getRandomValues(bytes);
+  const binary = Array.from(bytes, byte => String.fromCharCode(byte)).join('');
+  const token = globalThis.btoa(binary)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '');
+
+  if (token.length !== 43) {
+    throw new Error('Secure checkout token generation failed');
+  }
+
+  return {
+    requestId: globalThis.crypto.randomUUID(),
+    token
+  };
+};
+
 const DigitalShopCheckout = () => {
   const { retailerId } = useParams();
   const { state } = useLocation();
@@ -39,6 +62,7 @@ const DigitalShopCheckout = () => {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [shop, setShop] = useState(null);
+  const submissionInFlightRef = useRef(false);
   
   // Form State
   const [formData, setFormData] = useState({
@@ -100,6 +124,10 @@ const DigitalShopCheckout = () => {
 
   const handleSubmitOrder = async (e) => {
     e.preventDefault();
+    if (submissionInFlightRef.current) {
+      return;
+    }
+
     if (!formData.name || !formData.phone || !formData.address) {
       toast({
         title: "Missing Information",
@@ -109,27 +137,25 @@ const DigitalShopCheckout = () => {
       return;
     }
 
+    submissionInFlightRef.current = true;
     setSubmitting(true);
+    let orderSucceeded = false;
     try {
-      const orderPayload = {
-        retailer_id: retailerId,
-        customer_id: user?.id || null,
-        customer_phone: formData.phone,
-        order_items: cartItems.map(item => ({
+      const businessPayload = {
+        retailerId,
+        customerPhone: formData.phone,
+        orderItems: cartItems.map(item => ({
           product_id: item.id,
           name: item.name,
           price: item.selling_price,
           quantity: item.quantity,
           image_url: item.image_url
         })),
-        total_amount: total,
-        payment_method: formData.paymentMethod,
-        status: 'Pending',
-        payment_status: 'Unpaid',
-        is_moved_to_sales: false,
-        gift_wrapping: formData.giftWrapping,
-        gift_wrapping_cost: giftWrappingCharge,
-        shipping_address: {
+        totalAmount: total,
+        paymentMethod: formData.paymentMethod,
+        giftWrapping: formData.giftWrapping,
+        giftWrappingCost: giftWrappingCharge,
+        shippingAddress: {
           name: formData.name,
           address: formData.address,
           city: formData.city,
@@ -137,30 +163,110 @@ const DigitalShopCheckout = () => {
           notes: formData.notes
         }
       };
+      const serializedPayload = JSON.stringify(businessPayload);
+      const attemptStorageKey = `shopoapp:checkout:${retailerId}:attempt`;
+      let attempt;
 
-      const { data, error } = await supabase
-        .from('digital_shop_orders')
-        .insert(orderPayload)
-        .select()
-        .single();
+      try {
+        const storedAttempt = sessionStorage.getItem(attemptStorageKey);
+        let parsedAttempt = null;
+
+        if (storedAttempt) {
+          try {
+            parsedAttempt = JSON.parse(storedAttempt);
+          } catch {
+            parsedAttempt = null;
+          }
+        }
+
+        const canReuseAttempt = parsedAttempt?.payload === serializedPayload
+          && typeof parsedAttempt?.requestId === 'string'
+          && typeof parsedAttempt?.token === 'string'
+          && /^[A-Za-z0-9_-]{43}$/.test(parsedAttempt.token);
+
+        if (canReuseAttempt) {
+          attempt = parsedAttempt;
+        } else {
+          const credentials = createSecureCheckoutCredentials();
+          attempt = {
+            ...credentials,
+            payload: serializedPayload,
+            createdAt: new Date().toISOString()
+          };
+          sessionStorage.setItem(attemptStorageKey, JSON.stringify(attempt));
+        }
+      } catch {
+        throw new Error('SECURE_CHECKOUT_INITIALIZATION_FAILED');
+      }
+
+      const { data, error } = await supabase.rpc('create_digital_shop_order', {
+        p_checkout_request_id: attempt.requestId,
+        p_guest_token: attempt.token,
+        p_retailer_id: retailerId,
+        p_customer_phone: formData.phone,
+        p_order_items: businessPayload.orderItems,
+        p_total_amount: total,
+        p_payment_method: formData.paymentMethod,
+        p_gift_wrapping: formData.giftWrapping,
+        p_gift_wrapping_cost: giftWrappingCharge,
+        p_shipping_address: businessPayload.shippingAddress
+      });
 
       if (error) throw error;
+      if (!data?.order_id) {
+        throw new Error('INVALID_CHECKOUT_RESPONSE');
+      }
+
+      try {
+        sessionStorage.setItem(
+          `shopoapp:guest-order:${data.order_id}:token`,
+          JSON.stringify({
+            token: attempt.token,
+            expiresAt: data.guest_access_expires_at
+          })
+        );
+        sessionStorage.removeItem(attemptStorageKey);
+      } catch {
+        throw new Error('SECURE_CHECKOUT_INITIALIZATION_FAILED');
+      }
 
       toast({
         title: "Order Placed Successfully!",
         description: `Your order for ${total.toFixed(2)} has been sent to the shop.`,
       });
 
-      navigate(`/order-confirmation/${data.id}`);
+      orderSucceeded = true;
+      navigate(`/order-confirmation/${data.order_id}`);
     } catch (error) {
-      console.error('Order error:', error);
+      console.error('Order submission failed', {
+        code: error?.code,
+        status: error?.status
+      });
+
+      const message = error?.message || '';
+      let description = "Could not place the order. Please try again.";
+
+      if (message === 'SECURE_CHECKOUT_INITIALIZATION_FAILED') {
+        description = "Unable to start secure checkout. Please try again.";
+      } else if (
+        error instanceof TypeError
+        || /network|fetch|timeout|connection/i.test(message)
+      ) {
+        description = "Couldn't confirm the order. Please try again.";
+      } else if (error?.code === 'P0001' || error?.status === 400) {
+        description = "Please review your checkout details and try again.";
+      }
+
       toast({
         title: "Order Failed",
-        description: error.message || "Something went wrong while placing your order.",
+        description,
         variant: "destructive"
       });
     } finally {
       setSubmitting(false);
+      if (!orderSucceeded) {
+        submissionInFlightRef.current = false;
+      }
     }
   };
 
