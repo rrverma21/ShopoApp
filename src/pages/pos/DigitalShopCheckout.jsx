@@ -77,8 +77,8 @@ const DigitalShopCheckout = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('profiles')
-        .select('business_name, street_address, city')
+        .from('public_shop_profiles')
+        .select('business_name')
         .eq('id', retailerId)
         .single();
       if (error) throw error;
