@@ -35,7 +35,7 @@ const PublicOfferPage = () => {
                 if (promo) {
                     setOffer(promo);
                     const { data: profile } = await supabase
-                        .from('profiles')
+                        .from('public_shop_profiles')
                         .select('business_name, id')
                         .eq('id', promo.shop_id)
                         .single();
