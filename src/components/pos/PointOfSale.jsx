@@ -11,7 +11,7 @@ import { usePOSMode } from '@/contexts/POSModeContext';
 import { useRegion } from '@/contexts/RegionContext';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Trash2, ShoppingCart, Ticket, Search, X, Loader2, ChevronUp, ChevronDown, Phone, Plus, Minus, CreditCard, Landmark, Smartphone, Banknote, AlertCircle, Layers, Info, User, UserPlus, Bell, Coins, Calculator as CalculatorIcon, Barcode, Percent, IndianRupee, ScrollText, Briefcase, Printer, Tag, Building2, CheckCircle, FileText, RotateCcw, RefreshCw, ClipboardList } from 'lucide-react';
+import { Trash2, ShoppingCart, Ticket, Search, X, Loader2, ChevronUp, ChevronDown, Phone, Plus, Minus, CreditCard, Landmark, Smartphone, Banknote, AlertCircle, Layers, Info, User, UserPlus, Coins, Calculator as CalculatorIcon, Barcode, Percent, IndianRupee, ScrollText, Briefcase, Printer, Tag, Building2, CheckCircle, FileText, RotateCcw, RefreshCw, ClipboardList } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useDebounce } from '@/hooks/useDebounce';
@@ -35,7 +35,6 @@ import CashPaymentDialog from './CashPaymentDialog';
 import CreditConfirmDialog from './CreditConfirmDialog';
 import AddCustomerDialog from './AddCustomerDialog';
 import GlobalDiscountPopover from './GlobalDiscountPopover';
-import SharedContactsModal from './SharedContactsModal';
 import BarcodeScanner from './BarcodeScanner';
 import PaymentMethodButton from './PaymentMethodButton';
 import CustomerPredictionList from './CustomerPredictionList';
@@ -162,8 +161,6 @@ const PointOfSale = () => {
   const [showCustomerPredictions, setShowCustomerPredictions] = useState(false);
   const [selectedCustomerIndex, setSelectedCustomerIndex] = useState(-1);
   const [customers, setCustomers] = useState([]);
-  const [sharedContacts, setSharedContacts] = useState([]); 
-  const [isSharedContactsModalOpen, setIsSharedContactsModalOpen] = useState(false); 
   
   const { results: customerSearchResults, loading: isCustomerSearchLoading, error: customerSearchError } = useCustomerSearch(customerPhone, posUserId, selectedCustomer);
   const debouncedCustomerPhone = useDebounce(customerPhone, 400);
@@ -215,7 +212,7 @@ const PointOfSale = () => {
   
   const [temporaryBillId, setTemporaryBillId] = useState(`temp_${Date.now()}_${Math.random().toString(36).substring(7)}`);
 
-  const isAnyModalOpen = useMemo(() => isSplitPaymentOpen || isCashDialogOpen || isCreditConfirmOpen || isPriceChangeDialogOpen || isVariantSelectorOpen || isQuantityDialogOpen || isAddCustomerOpen || isPOSProductsModalOpen || isSharedContactsModalOpen || isScannerOpen || isSaveSaleModalOpen || isResumeSaleModalOpen || isCreditNoteModalOpen || isBookOrdersModalOpen, [isSplitPaymentOpen, isCashDialogOpen, isCreditConfirmOpen, isPriceChangeDialogOpen, isVariantSelectorOpen, isQuantityDialogOpen, isAddCustomerOpen, isPOSProductsModalOpen, isSharedContactsModalOpen, isScannerOpen, isSaveSaleModalOpen, isResumeSaleModalOpen, isCreditNoteModalOpen, isBookOrdersModalOpen]);
+  const isAnyModalOpen = useMemo(() => isSplitPaymentOpen || isCashDialogOpen || isCreditConfirmOpen || isPriceChangeDialogOpen || isVariantSelectorOpen || isQuantityDialogOpen || isAddCustomerOpen || isPOSProductsModalOpen || isScannerOpen || isSaveSaleModalOpen || isResumeSaleModalOpen || isCreditNoteModalOpen || isBookOrdersModalOpen, [isSplitPaymentOpen, isCashDialogOpen, isCreditConfirmOpen, isPriceChangeDialogOpen, isVariantSelectorOpen, isQuantityDialogOpen, isAddCustomerOpen, isPOSProductsModalOpen, isScannerOpen, isSaveSaleModalOpen, isResumeSaleModalOpen, isCreditNoteModalOpen, isBookOrdersModalOpen]);
 
   const paymentOptions = useMemo(() => [
     { name: 'Cash', icon: Banknote, shortcut: 'F12', label: t('pos.cash') },
@@ -405,18 +402,6 @@ const PointOfSale = () => {
   }, [fetchAllProducts, fetchCustomers, fetchBusinessDetails]);
 
   useEffect(() => {
-      if (!posUserId) return;
-      const fetchShared = async () => {
-          const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString();
-          const { data } = await supabase.from('shared_contacts').select('*').eq('seller_id', posUserId).or(`status.eq.pending,and(status.eq.processed,created_at.gt.${twelveHoursAgo})`).order('created_at', { ascending: false });
-          if (data) setSharedContacts(data);
-      };
-      fetchShared();
-      const channel = supabase.channel('shared_contacts_pos_channel').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'shared_contacts', filter: `seller_id=eq.${posUserId}` }, (payload) => { setSharedContacts(prev => { if (prev.find(c => c.id === payload.new.id)) return prev; const audio = new Audio('/notification.mp3'); audio.play().catch(() => {}); return [payload.new, ...prev]; }); }).on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'shared_contacts', filter: `seller_id=eq.${posUserId}` }, (payload) => { setSharedContacts(prev => prev.map(c => c.id === payload.new.id ? payload.new : c)); }).subscribe();
-      return () => { supabase.removeChannel(channel); };
-  }, [posUserId]);
-
-  useEffect(() => {
       const fetchLoyaltyConfig = async () => {
           const { data } = await supabase.from('site_settings').select('value').eq('key', 'loyalty_settings').maybeSingle();
           if (data && data.value) { try { const config = JSON.parse(data.value); setLoyaltyConfig(prev => ({ ...prev, ...config })); } catch (e) { console.warn("Error parsing loyalty settings", e); } }
@@ -486,27 +471,6 @@ const PointOfSale = () => {
   const handleCustomerCreated = (newCustomer) => {
       setCustomers(prev => [...prev, newCustomer]);
       handleCustomerSelect(newCustomer);
-  };
-
-  const handleSharedContactSelect = async (shared) => {
-      let targetCustomer = customers.find(c => c.phone === shared.customer_phone);
-      if (!targetCustomer) {
-          if (shared.customer_name && shared.customer_phone) {
-              try {
-                  const { data: existingCustomer } = await supabase.from('point_of_sale_customers').select('*').eq('user_id', posUserId).eq('phone', shared.customer_phone).maybeSingle(); 
-                  if (existingCustomer) { targetCustomer = existingCustomer; } else { const { data: newCustomer } = await supabase.from('point_of_sale_customers').insert({ user_id: posUserId, name: shared.customer_name, phone: shared.customer_phone, created_at: new Date().toISOString() }).select().single(); if(newCustomer) targetCustomer = newCustomer; }
-              } catch (err) { console.error(err); }
-          }
-      }
-      if (targetCustomer) { handleCustomerSelect(targetCustomer); } else { setCustomerPhone(shared.customer_phone); setCustomerName(shared.customer_name || ''); setSelectedCustomer(null); checkCreditNotes(shared.customer_phone); }
-      await supabase.from('shared_contacts').update({ status: 'processed' }).eq('id', shared.id);
-      setSharedContacts(prev => prev.map(c => c.id === shared.id ? { ...c, status: 'processed' } : c));
-      setIsSharedContactsModalOpen(false); 
-  };
-
-  const dismissSharedContact = async (id) => {
-      await supabase.from('shared_contacts').update({ status: 'dismissed' }).eq('id', id);
-      setSharedContacts(prev => prev.filter(p => p.id !== id));
   };
 
   const getPriceForMode = useCallback((product, mode) => {
@@ -1257,8 +1221,6 @@ const PointOfSale = () => {
   usePaymentMethodShortcuts(!isProcessingSale && !isAnyModalOpen && (cart.length > 0 || parseFloat(manualPendingAmount) > 0), handlePaymentMethodSelect);
 
   const isMobileSearchActive = mobileSearchActive;
-  const pendingCount = sharedContacts.filter(c => c.status === 'pending').length;
-
   const saveSaleButton = (
       <Button 
       variant="ghost" 
@@ -1329,13 +1291,6 @@ const PointOfSale = () => {
       title="Scan Barcode"
       >
       <Barcode className="h-6 w-6" />
-      </Button>
-  );
-
-  const notificationButton = (
-      <Button variant="ghost" size="icon" className="relative h-12 w-12 rounded-full bg-slate-800 hover:bg-slate-700 border border-transparent hover:border-slate-600 shadow-sm" onClick={() => setIsSharedContactsModalOpen(true)}>
-      <Bell className="h-6 w-6 text-slate-400" />
-      {pendingCount > 0 && <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-white dark:ring-slate-900">{pendingCount > 9 ? '9+' : pendingCount}</span>}
       </Button>
   );
 
@@ -1433,7 +1388,6 @@ const PointOfSale = () => {
                   {calculatorButton}
                   {viewOrdersButton}
                   {scannerButton}
-                  {notificationButton}
               </div>
             </div>
             
@@ -1443,7 +1397,6 @@ const PointOfSale = () => {
                 {calculatorButton}
                 {viewOrdersButton}
                 {scannerButton}
-                {notificationButton}
             </div>
         </div>
 
@@ -1661,7 +1614,6 @@ const PointOfSale = () => {
         <CreditConfirmDialog open={isCreditConfirmOpen} onOpenChange={setIsCreditConfirmOpen} totalAmount={saleTotal} customer={{ name: customerName || (selectedCustomer ? selectedCustomer.name : 'Guest'), phone: customerPhone }} onConfirm={() => handleCheckout('Credit')} />
         <VariantSelectorDialog open={isVariantSelectorOpen} onOpenChange={setIsVariantSelectorOpen} product={variantSelectorProduct} onConfirm={handleVariantConfirm} />
         <QuantityPickerDialog open={isQuantityDialogOpen} onOpenChange={setIsQuantityDialogOpen} product={pendingAddItem?.product} onConfirm={handleQuantityConfirm} />
-        <SharedContactsModal open={isSharedContactsModalOpen} onOpenChange={setIsSharedContactsModalOpen} sharedContacts={sharedContacts} onSelect={handleSharedContactSelect} onDismiss={dismissSharedContact} />
         <AddCustomerDialog open={isAddCustomerOpen} onOpenChange={setIsAddCustomerOpen} onCustomerAdded={handleCustomerCreated} />
         <POSProductsModal isOpen={isPOSProductsModalOpen} onClose={() => setIsPOSProductsModalOpen(false)} retailerId={posUserId} addToCart={handleAddToCart} />
         

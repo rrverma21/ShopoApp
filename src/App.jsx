@@ -100,7 +100,6 @@ const PosSmartReorder = lazy(() => import('@/components/pos/PosSmartReorder'));
 const PosCredit = lazy(() => import('@/components/pos/PosCredit'));
 const PosRefunds = lazy(() => import('@/components/pos/PosRefunds'));
 const PosPendingPayments = lazy(() => import('@/components/pos/PosPendingPayments'));
-const ShareContactPage = lazy(() => import('@/pages/pos/ShareContactPage'));
 const AttendanceTracker = lazy(() => import('@/pages/pos/AttendanceTracker'));
 const AttendanceQRScanner = lazy(() => import('@/pages/pos/AttendanceQRScanner'));
 const EmployeeManagement = lazy(() => import('@/pages/pos/EmployeeManagement'));
@@ -303,8 +302,6 @@ const AppRoutes = () => {
                     <Route path="/order-confirmation" element={<OrderConfirmation />} />
                     <Route path="/order-tracking/:orderId" element={<OrderTracking />} />
                     
-                    <Route path="/share-contact/:sellerId" element={<ShareContactPage />} />
-
                     <Route path="/join-us" element={<RouteSEO title="ShopoApp | Smart POS Billing, Inventory & Taxation Software"><MainLayout><JoinUsPage /></MainLayout></RouteSEO>} />
                     <Route path="/about" element={<RouteSEO title="ShopoApp | Smart POS Billing, Inventory & Taxation Software"><MainLayout><AboutPage /></MainLayout></RouteSEO>} />
                     <Route path="/terms-of-service" element={<RouteSEO title="ShopoApp | Smart POS Billing, Inventory & Taxation Software"><MainLayout><TermsOfService /></MainLayout></RouteSEO>} />
@@ -380,7 +377,6 @@ const AppRoutes = () => {
                         <Route path="credit" element={<PosCredit />} />
                         <Route path="pending-payments" element={<PosPendingPayments />} />
                         <Route path="refunds" element={<PosRefunds />} />
-                        <Route path="share-contact" element={<ShareContactPage />} />
                         <Route path="attendance-tracker" element={<AttendanceTracker />} />
                         <Route path="attendance-qr-scanner" element={<AttendanceQRScanner />} />
                         <Route path="employees" element={<EmployeeManagement />} />
