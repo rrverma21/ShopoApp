@@ -57,25 +57,6 @@ const OrderTracking = () => {
     };
   }, [orderId, toast]);
 
-  // Demo function to simulate status updates
-  const simulateStatusUpdate = async () => {
-      const statuses = ['Pending', 'Processing', 'Shipped', 'Delivered'];
-      const currentIndex = statuses.findIndex(s => s.toLowerCase() === order.status.toLowerCase());
-      const nextStatus = statuses[currentIndex + 1] || statuses[0]; // Cycle for demo
-
-      const { error } = await supabase
-        .from('digital_shop_orders')
-        .update({ 
-            status: nextStatus,
-            updated_at: new Date().toISOString()
-        })
-        .eq('id', orderId);
-
-      if (error) {
-          toast({ title: "Update Failed", variant: "destructive" });
-      }
-  };
-
   if (loading) {
      return <div className="min-h-screen flex items-center justify-center"><RefreshCw className="w-8 h-8 animate-spin text-gray-400" /></div>;
   }
@@ -164,13 +145,6 @@ const OrderTracking = () => {
                             <span className="font-mono font-bold text-gray-800">{order.tracking_number}</span>
                         </div>
                     )}
-                    
-                    {/* Demo Button - Only visible in dev/demo usually */}
-                    <div className="mt-6 flex justify-center">
-                        <Button variant="outline" size="sm" onClick={simulateStatusUpdate} className="text-xs text-gray-400">
-                            Simulate Status Update (Demo)
-                        </Button>
-                    </div>
                 </CardContent>
             </Card>
 
