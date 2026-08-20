@@ -86,8 +86,7 @@ const DigitalShopCheckout = () => {
 
   const subtotal = cartItems.reduce((sum, item) => sum + (item.selling_price * item.quantity), 0);
   const giftWrappingCharge = formData.giftWrapping ? 50 : 0;
-  const deliveryCharge = subtotal > 500 ? 0 : 40;
-  const total = subtotal + giftWrappingCharge + deliveryCharge;
+  const total = subtotal + giftWrappingCharge;
 
   useEffect(() => {
     if (cartItems.length === 0) {
@@ -500,12 +499,6 @@ const DigitalShopCheckout = () => {
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-500">Items Subtotal</span>
                     <span>₹{subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Delivery Fee</span>
-                    <span className={deliveryCharge === 0 ? "text-green-600 font-medium" : ""}>
-                      {deliveryCharge === 0 ? "FREE" : `₹${deliveryCharge}`}
-                    </span>
                   </div>
                   {formData.giftWrapping && (
                     <div className="flex justify-between text-sm">
