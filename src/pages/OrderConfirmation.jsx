@@ -12,31 +12,68 @@ const OrderConfirmation = () => {
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    if (!orderId) return;
+    let isActive = true;
     
     const fetchOrder = async () => {
-        try {
-            const { data, error } = await supabase
-                .from('digital_shop_orders')
-                .select(`*, retailer:profiles!digital_shop_orders_retailer_id_fkey(business_name, phone, city)`)
-                .eq('id', orderId)
-                .single();
-            
-            if (!data) {
-                 const { data: legacyOrder } = await supabase.from('orders').select('*').eq('id', orderId).single();
-                 if (legacyOrder) setOrder(legacyOrder);
-            } else {
-                setOrder(data);
-            }
-        } catch (e) {
-            console.error(e);
-        } finally {
+        setLoading(true);
+        setOrder(null);
+        setLoadError(false);
+
+        if (!orderId) {
             setLoading(false);
+            return;
+        }
+
+        try {
+            let token = null;
+
+            try {
+                const storedCredential = sessionStorage.getItem(`shopoapp:guest-order:${orderId}:token`);
+                const parsedCredential = storedCredential ? JSON.parse(storedCredential) : null;
+                if (typeof parsedCredential?.token === 'string' && parsedCredential.token.length > 0) {
+                    token = parsedCredential.token;
+                }
+            } catch {
+                token = null;
+            }
+
+            if (!token) return;
+
+            const { data, error } = await supabase.rpc(
+                'get_guest_order_confirmation',
+                {
+                    p_order_id: orderId,
+                    p_guest_token: token
+                }
+            );
+
+            if (error) {
+                if (isActive) setLoadError(true);
+                return;
+            }
+
+            if (!data || typeof data !== 'object' || !data.order_id || !data.retailer_id) return;
+
+            if (isActive) {
+                setOrder({
+                    ...data,
+                    id: data.order_id
+                });
+            }
+        } catch {
+            if (isActive) setLoadError(true);
+        } finally {
+            if (isActive) setLoading(false);
         }
     };
     fetchOrder();
+
+    return () => {
+        isActive = false;
+    };
   }, [orderId]);
 
   if (loading) {
@@ -44,6 +81,17 @@ const OrderConfirmation = () => {
           <div className="container mx-auto p-6 max-w-lg space-y-4">
               <Skeleton className="h-12 w-3/4 mx-auto" />
               <Skeleton className="h-64 w-full" />
+          </div>
+      );
+  }
+
+  if (loadError) {
+      return (
+          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6">
+              <Package className="h-16 w-16 text-slate-300 mb-4" />
+              <h2 className="text-2xl font-bold text-slate-900">Unable to Load Order</h2>
+              <p className="text-slate-600 mb-4">Please reload the page and try again.</p>
+              <Button onClick={() => window.location.reload()}>Reload Page</Button>
           </div>
       );
   }
@@ -84,8 +132,8 @@ const OrderConfirmation = () => {
             <div className="space-y-3">
                 {Array.isArray(order.order_items) && order.order_items.map((item, i) => (
                     <div key={i} className="flex justify-between text-sm">
-                        <div><span className="font-medium text-slate-900">{item.product_name || item.name}</span><div className="text-slate-500">Qty: {item.quantity}</div></div>
-                        <span className="font-medium">{formatPrice(item.total || (item.price * item.quantity))}</span>
+                        <div><span className="font-medium text-slate-900">{item.product_name}</span><div className="text-slate-500">Qty: {item.quantity}</div></div>
+                        <span className="font-medium">{formatPrice(item.total)}</span>
                     </div>
                 ))}
             </div>
@@ -114,7 +162,6 @@ const OrderConfirmation = () => {
                   <h3 className="font-semibold text-slate-900 mb-1 flex items-center gap-2"><Clock className="h-4 w-4" /> Payment Info</h3>
                   <div className="text-sm text-slate-600">
                       <p className="capitalize">Method: {order.payment_method || 'Cash'}</p>
-                      {order.payment_gateway && <p className="capitalize">Gateway: {order.payment_gateway}</p>}
                       <p className="capitalize flex items-center gap-2">Status: <span className={`font-bold ${isPaid ? 'text-green-600' : isFailed ? 'text-red-600' : 'text-amber-600'}`}>{order.payment_status || 'Pending'}</span></p>
                   </div>
               </CardContent>
