@@ -61,11 +61,9 @@ const DigitalShop = () => {
           .select('id, business_name, avatar_url, city, pincode, latitude, longitude, is_disabled, phone')
           .eq('id', retailerId)
           .single(),
-        supabase
-          .from('pos_retailer_settings')
-          .select('description, opening_time, closing_time, working_days, storefront_image_url')
-          .eq('user_id', retailerId)
-          .maybeSingle()
+        supabase.rpc('get_public_retailer_settings', {
+          p_retailer_id: retailerId
+        })
       ]);
 
       const { data: profile, error: profileError } = profileResult;
