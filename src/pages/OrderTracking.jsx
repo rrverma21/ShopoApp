@@ -8,6 +8,8 @@ import { Separator } from '@/components/ui/separator';
 import { ArrowLeft, Package, Truck, CheckCircle, Clock, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 
+const isFiniteNumber = value => typeof value === 'number' && Number.isFinite(value);
+
 const OrderTracking = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
@@ -56,14 +58,24 @@ const OrderTracking = () => {
           return;
         }
 
-        if (!data || typeof data !== 'object' || typeof data.status !== 'string' || data.total_amount == null) {
+        if (!data || typeof data !== 'object' || typeof data.status !== 'string' || !isFiniteNumber(data.total_amount)) {
           return;
         }
 
         if (isActive) {
           setOrder({
             ...data,
-            order_items: Array.isArray(data.order_items) ? data.order_items : []
+            order_items: Array.isArray(data.order_items)
+              ? data.order_items.map(item => ({
+                  product_name: typeof item?.product_name === 'string' ? item.product_name : '',
+                  quantity: isFiniteNumber(item?.quantity) ? item.quantity : null,
+                  unit_price: isFiniteNumber(item?.unit_price) ? item.unit_price : null,
+                  total: isFiniteNumber(item?.total) ? item.total : null
+                }))
+              : [],
+            subtotal: isFiniteNumber(data.subtotal) ? data.subtotal : null,
+            gift_wrapping: data.gift_wrapping === true,
+            gift_wrapping_cost: isFiniteNumber(data.gift_wrapping_cost) ? data.gift_wrapping_cost : null
           });
         }
       } catch {
@@ -196,21 +208,49 @@ const OrderTracking = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                      <div className="space-y-3">
-                        {order.order_items.map((item, i) => (
-                             <div key={i} className="flex justify-between items-center text-sm">
-                                 <div className="flex items-center gap-3">
-                                     <div className="w-8 h-8 bg-gray-100 rounded flex items-center justify-center text-xs font-bold text-gray-500">
-                                         {item.quantity}x
-                                     </div>
-                                     <span className="font-medium text-gray-700">{item.product_name}</span>
-                                 </div>
-                                 <span className="text-gray-900 font-semibold">{formatPrice(item.total)}</span>
-                             </div>
-                        ))}
+                        {order.order_items.map((item, i) => {
+                            const quantityLabel = item.quantity == null ? '—' : item.quantity;
+                            const pricingLabel = item.unit_price == null
+                                ? `Qty: ${quantityLabel}`
+                                : item.quantity == null
+                                  ? `Unit price: ${formatPrice(item.unit_price)}`
+                                  : `${item.quantity} × ${formatPrice(item.unit_price)}`;
+
+                            return (
+                                <div key={i} className="flex justify-between items-start gap-4 text-sm">
+                                    <div className="min-w-0">
+                                        <div className="font-medium text-gray-700">{item.product_name || 'Unnamed product'}</div>
+                                        <div className="text-xs text-gray-500 mt-1">{pricingLabel}</div>
+                                    </div>
+                                    <span className="text-gray-900 font-semibold shrink-0">
+                                        {item.total == null ? '—' : formatPrice(item.total)}
+                                    </span>
+                                </div>
+                            );
+                        })}
                      </div>
                      
                      <Separator />
-                     
+
+                     <div className="space-y-2">
+                         <div className="flex justify-between items-center text-sm">
+                             <span className="text-gray-600">Subtotal</span>
+                             <span className="font-medium text-gray-900">
+                                 {order.subtotal == null ? '—' : formatPrice(order.subtotal)}
+                             </span>
+                         </div>
+                         {order.gift_wrapping && (
+                             <div className="flex justify-between items-center text-sm">
+                                 <span className="text-purple-600">Gift Wrapping</span>
+                                 <span className="font-medium text-purple-600">
+                                     {order.gift_wrapping_cost == null ? '—' : formatPrice(order.gift_wrapping_cost)}
+                                 </span>
+                             </div>
+                         )}
+                     </div>
+
+                     <Separator />
+
                      <div className="flex justify-between items-center pt-2">
                          <span className="font-bold text-gray-900">Total Amount</span>
                          <span className="font-bold text-xl text-green-600">{formatPrice(order.total_amount)}</span>
