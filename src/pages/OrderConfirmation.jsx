@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CheckCircle, XCircle, Clock, ArrowRight, Package, Truck } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
+const isFiniteNumber = value => typeof value === 'number' && Number.isFinite(value);
+
 const OrderConfirmation = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
@@ -55,12 +57,23 @@ const OrderConfirmation = () => {
                 return;
             }
 
-            if (!data || typeof data !== 'object' || !data.order_id || !data.retailer_id) return;
+            if (!data || typeof data !== 'object' || !data.order_id || !data.retailer_id || !isFiniteNumber(data.total_amount)) return;
 
             if (isActive) {
                 setOrder({
                     ...data,
-                    id: data.order_id
+                    id: data.order_id,
+                    order_items: Array.isArray(data.order_items)
+                        ? data.order_items.map(item => ({
+                            product_name: typeof item?.product_name === 'string' ? item.product_name : '',
+                            quantity: isFiniteNumber(item?.quantity) ? item.quantity : null,
+                            unit_price: isFiniteNumber(item?.unit_price) ? item.unit_price : null,
+                            total: isFiniteNumber(item?.total) ? item.total : null
+                        }))
+                        : [],
+                    subtotal: isFiniteNumber(data.subtotal) ? data.subtotal : null,
+                    gift_wrapping: data.gift_wrapping === true,
+                    gift_wrapping_cost: isFiniteNumber(data.gift_wrapping_cost) ? data.gift_wrapping_cost : null
                 });
             }
         } catch {
@@ -130,17 +143,29 @@ const OrderConfirmation = () => {
         </CardHeader>
         <CardContent className="p-6 space-y-4">
             <div className="space-y-3">
-                {Array.isArray(order.order_items) && order.order_items.map((item, i) => (
-                    <div key={i} className="flex justify-between text-sm">
-                        <div><span className="font-medium text-slate-900">{item.product_name}</span><div className="text-slate-500">Qty: {item.quantity}</div></div>
-                        <span className="font-medium">{formatPrice(item.total)}</span>
-                    </div>
-                ))}
+                {order.order_items.map((item, i) => {
+                    const quantityLabel = item.quantity == null ? '—' : item.quantity;
+                    const pricingLabel = item.unit_price == null
+                        ? `Qty: ${quantityLabel}`
+                        : item.quantity == null
+                            ? `Unit price: ${formatPrice(item.unit_price)}`
+                            : `${item.quantity} × ${formatPrice(item.unit_price)}`;
+
+                    return (
+                        <div key={i} className="flex justify-between items-start gap-4 text-sm">
+                            <div className="min-w-0">
+                                <div className="font-medium text-slate-900">{item.product_name || 'Unnamed product'}</div>
+                                <div className="text-slate-500 mt-1">{pricingLabel}</div>
+                            </div>
+                            <span className="font-medium shrink-0">{item.total == null ? '—' : formatPrice(item.total)}</span>
+                        </div>
+                    );
+                })}
             </div>
             
             <div className="border-t pt-4 mt-4 space-y-2">
-                <div className="flex justify-between text-sm"><span className="text-slate-600">Subtotal</span><span>{formatPrice(order.total_amount - (order.gift_wrapping_cost || 0))}</span></div>
-                {order.gift_wrapping && (<div className="flex justify-between text-sm text-purple-600"><span>Gift Wrapping</span><span>{formatPrice(order.gift_wrapping_cost)}</span></div>)}
+                <div className="flex justify-between text-sm"><span className="text-slate-600">Subtotal</span><span>{order.subtotal == null ? '—' : formatPrice(order.subtotal)}</span></div>
+                {order.gift_wrapping && (<div className="flex justify-between text-sm text-purple-600"><span>Gift Wrapping</span><span>{order.gift_wrapping_cost == null ? '—' : formatPrice(order.gift_wrapping_cost)}</span></div>)}
                 <div className="flex justify-between text-lg font-bold pt-2 border-t mt-2"><span>Total</span><span className="text-green-700">{formatPrice(order.total_amount)}</span></div>
             </div>
         </CardContent>
