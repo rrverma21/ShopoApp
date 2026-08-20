@@ -5,60 +5,94 @@ import { formatPrice, cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/components/ui/use-toast';
-import { ArrowLeft, Package, Truck, CheckCircle, Clock, MapPin, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Package, Truck, CheckCircle, Clock, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 
 const OrderTracking = () => {
   const { orderId } = useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  const fetchOrder = async () => {
-    try {
-        const { data, error } = await supabase.rpc('get_order_details_by_id', { p_order_id: orderId });
-        if (error) throw error;
-        setOrder(data);
-    } catch (error) {
-        console.error("Error fetching tracking info:", error);
-    } finally {
-        setLoading(false);
-    }
-  };
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
-    fetchOrder();
+    let isActive = true;
 
-    // Subscribe to realtime updates
-    const channel = supabase
-      .channel(`order_tracking_${orderId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'digital_shop_orders',
-          filter: `id=eq.${orderId}`
-        },
-        (payload) => {
-          setOrder(payload.new);
-          toast({
-            title: "Order Updated",
-            description: `Status changed to ${payload.new.status}`,
+    const fetchOrder = async () => {
+      setLoading(true);
+      setOrder(null);
+      setLoadError(false);
+
+      if (!orderId) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        let token = null;
+
+        try {
+          const storedCredential = sessionStorage.getItem(`shopoapp:guest-order:${orderId}:token`);
+          const parsedCredential = storedCredential ? JSON.parse(storedCredential) : null;
+          if (typeof parsedCredential?.token === 'string' && parsedCredential.token.length > 0) {
+            token = parsedCredential.token;
+          }
+        } catch {
+          token = null;
+        }
+
+        if (!token) return;
+
+        const { data, error } = await supabase.rpc(
+          'get_guest_order_tracking',
+          {
+            p_order_id: orderId,
+            p_guest_token: token
+          }
+        );
+
+        if (error) {
+          if (isActive) setLoadError(true);
+          return;
+        }
+
+        if (!data || typeof data !== 'object' || typeof data.status !== 'string' || data.total_amount == null) {
+          return;
+        }
+
+        if (isActive) {
+          setOrder({
+            ...data,
+            order_items: Array.isArray(data.order_items) ? data.order_items : []
           });
         }
-      )
-      .subscribe();
+      } catch {
+        if (isActive) setLoadError(true);
+      } finally {
+        if (isActive) setLoading(false);
+      }
+    };
+
+    fetchOrder();
 
     return () => {
-      supabase.removeChannel(channel);
+      isActive = false;
     };
-  }, [orderId, toast]);
+  }, [orderId]);
 
   if (loading) {
      return <div className="min-h-screen flex items-center justify-center"><RefreshCw className="w-8 h-8 animate-spin text-gray-400" /></div>;
+  }
+
+  if (loadError) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center">
+            <Package className="w-16 h-16 text-gray-300 mb-4" />
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Unable to Load Tracking</h2>
+            <p className="text-gray-500 mb-4">Please reload the page and try again.</p>
+            <Button onClick={() => window.location.reload()}>Reload Page</Button>
+        </div>
+      );
   }
 
   if (!order) {
@@ -80,6 +114,13 @@ const OrderTracking = () => {
 
   const currentStatusLower = order.status?.toLowerCase() || 'pending';
   const currentStepIndex = steps.findIndex(s => s.id === currentStatusLower);
+  const progressWidth = currentStepIndex >= 0
+      ? (currentStepIndex / (steps.length - 1)) * 100
+      : 0;
+  const lastUpdatedAt = new Date(order.updated_at || order.created_at);
+  const lastUpdatedLabel = Number.isNaN(lastUpdatedAt.getTime())
+      ? 'Unavailable'
+      : format(lastUpdatedAt, 'MMM d, h:mm a');
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20 font-sans">
@@ -100,7 +141,7 @@ const OrderTracking = () => {
                 <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white text-center">
                     <div className="text-3xl font-bold mb-1">{order.status}</div>
                     <div className="text-sm opacity-80">
-                        Last updated: {format(new Date(order.updated_at || order.created_at), 'MMM d, h:mm a')}
+                        Last updated: {lastUpdatedLabel}
                     </div>
                 </div>
                 <CardContent className="p-6">
@@ -111,7 +152,7 @@ const OrderTracking = () => {
                         {/* Active Progress Bar */}
                         <div 
                             className="absolute top-5 left-0 h-1 bg-green-500 rounded-full -z-10 transition-all duration-500"
-                            style={{ width: `${(currentStepIndex / (steps.length - 1)) * 100}%` }}
+                            style={{ width: `${progressWidth}%` }}
                         ></div>
 
                         {steps.map((step, idx) => {
@@ -154,19 +195,6 @@ const OrderTracking = () => {
                     <CardTitle className="text-base font-bold">Order Details</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                     <div className="flex gap-4">
-                        <MapPin className="w-5 h-5 text-gray-400 shrink-0 mt-0.5" />
-                        <div>
-                            <div className="font-semibold text-gray-900 text-sm">Delivery Address</div>
-                            <div className="text-sm text-gray-500 mt-1">
-                                {order.shipping_address?.name}<br/>
-                                {order.shipping_address?.address}, {order.shipping_address?.city}
-                            </div>
-                        </div>
-                     </div>
-                     
-                     <Separator />
-
                      <div className="space-y-3">
                         {order.order_items.map((item, i) => (
                              <div key={i} className="flex justify-between items-center text-sm">
