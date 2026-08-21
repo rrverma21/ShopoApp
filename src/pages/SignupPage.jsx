@@ -183,7 +183,7 @@ const SignupPage = () => {
             city: formData.city,
             state: formData.state,
             pincode: formData.pincode,
-            role: role || 'client'
+            role: role || 'customer'
           },
         }
       });
@@ -251,7 +251,7 @@ const SignupPage = () => {
             <div className="space-y-6">
               <h3 className="text-2xl font-bold text-slate-800 dark:text-white">Choose your path</h3>
               <div className="grid gap-4">
-                <button onClick={() => setRole('client')} className="flex items-center p-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:border-primary dark:hover:border-primary hover:bg-primary/5 dark:hover:bg-primary/10 transition-all text-left group">
+                <button onClick={() => setRole('customer')} className="flex items-center p-4 border-2 border-slate-200 dark:border-slate-700 rounded-xl hover:border-primary dark:hover:border-primary hover:bg-primary/5 dark:hover:bg-primary/10 transition-all text-left group">
                   <User className="w-10 h-10 text-primary mr-4 group-hover:scale-110 transition-transform" />
                   <div><p className="font-bold text-slate-900 dark:text-white">Customer</p><p className="text-sm text-slate-500 dark:text-slate-400">I want to buy products</p></div>
                 </button>
@@ -269,7 +269,7 @@ const SignupPage = () => {
               <div className="flex items-center justify-between mb-4">
                 <Button type="button" variant="ghost" onClick={() => setRole(null)} className="h-8 px-2 text-slate-500"><ArrowLeft className="w-4 h-4 mr-2"/> Back</Button>
                 <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded uppercase">
-                  {role === 'client' ? 'CUSTOMER DETAILS' : role === 'seller' ? 'SELLER DETAILS' : `Registering as ${role}`}
+                  {role === 'customer' ? 'CUSTOMER DETAILS' : role === 'seller' ? 'SELLER DETAILS' : `Registering as ${role}`}
                 </span>
               </div>
               
