@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { toast } from '@/components/ui/use-toast';
+import { normalizeProfileRole } from '@/lib/profileRoles';
 
 const LoginPage = () => {
   const [formData, setFormData] = useState({
@@ -23,13 +24,13 @@ const LoginPage = () => {
 
   useEffect(() => {
     if (!authLoading && !membershipLoading && user) {
-      const userRole = user.profile?.role;
+      const userRole = normalizeProfileRole(user.profile?.role);
       
       if (userRole === 'admin') {
         navigate('/admin', { replace: true });
       } else if (userRole === 'seller') {
         navigate('/pos', { replace: true });
-      } else if (userRole === 'customer' || userRole === 'client') {
+      } else if (userRole === 'customer') {
         navigate('/local-shops', { replace: true });
       } else {
         navigate('/profile', { replace: true });

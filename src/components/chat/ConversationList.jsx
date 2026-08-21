@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle, Loader2 } from 'lucide-react';
 import NewChatDialog from '@/components/chat/NewChatDialog';
 import { getInitials } from '@/lib/utils';
+import { normalizeProfileRole } from '@/lib/profileRoles';
 
 const ConversationList = ({ onSelectConversation }) => {
   const { user } = useAuth();
@@ -21,8 +22,9 @@ const ConversationList = ({ onSelectConversation }) => {
     if (!user) return;
     setLoading(true);
 
+    const normalizedRole = normalizeProfileRole(user.profile.role);
     let query;
-    if (user.profile.role === 'client') {
+    if (normalizedRole === 'customer') {
         query = supabase.from('conversations').select('*, other_user:seller_id(*, profiles(*))').eq('client_id', user.id);
     } else {
         query = supabase.rpc('get_user_conversations', { p_user_id: user.id });
@@ -35,7 +37,7 @@ const ConversationList = ({ onSelectConversation }) => {
     } else {
       const formattedData = data.map(convo => {
           let otherUser;
-          if (user.profile.role === 'client') {
+          if (normalizedRole === 'customer') {
               otherUser = convo.other_user?.profiles;
           } else {
              if (convo.client_id === user.id) otherUser = convo.seller;

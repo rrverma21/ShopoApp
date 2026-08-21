@@ -13,6 +13,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { AnimatePresence } from 'framer-motion';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RegionProvider } from '@/contexts/RegionContext';
+import { normalizeProfileRole } from '@/lib/profileRoles';
 
 import 'react-day-picker/dist/style.css';
 
@@ -215,7 +216,7 @@ const AppRoutes = () => {
 
     const getDashboardPath = () => {
         if (!user || !user.profile) return '/login';
-        switch (user.profile.role) {
+        switch (normalizeProfileRole(user.profile.role)) {
             case 'admin': return '/admin';
             case 'seller': return '/pos/point-of-sale'; 
             case 'salesman': return '/sales';

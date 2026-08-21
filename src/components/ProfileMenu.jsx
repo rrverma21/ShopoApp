@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { normalizeProfileRole } from '@/lib/profileRoles';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const ProfileMenu = ({ user, membership, onSignOut, isSigningOut, profileError, retryProfileFetch }) => {
@@ -19,12 +20,12 @@ const ProfileMenu = ({ user, membership, onSignOut, isSigningOut, profileError, 
 
   const getDashboardLink = () => {
     if (!user?.profile?.role) return '/login';
-    switch (user.profile.role) {
+    switch (normalizeProfileRole(user.profile.role)) {
       case 'admin': return '/admin';
       case 'seller': return '/pos/point-of-sale';
       case 'rider': return '/rider/dashboard';
       case 'salesman': return '/sales';
-      case 'client': return '/customer/dashboard';
+      case 'customer': return '/customer/dashboard';
       default: return '/profile';
     }
   };
