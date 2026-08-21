@@ -13,10 +13,27 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { normalizeProfileRole } from '@/lib/profileRoles';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { format } from 'date-fns';
 
 const ProfileMenu = ({ user, membership, onSignOut, isSigningOut, profileError, retryProfileFetch }) => {
   const navigate = useNavigate();
   const { t } = useLanguage();
+  const displayName = user?.profile?.business_name
+    || user?.profile?.contact_person
+    || user?.user_metadata?.businessName
+    || user?.user_metadata?.contactPerson
+    || user?.user_metadata?.full_name
+    || user?.email
+    || 'User';
+  const email = user?.email || '';
+  const membershipPlanName = membership?.plan?.name;
+  const membershipEndDate = membership?.end_date || membership?.membership_end_date;
+  const parsedMembershipEndDate = membershipEndDate ? new Date(membershipEndDate) : null;
+  const membershipValidity = parsedMembershipEndDate && !Number.isNaN(parsedMembershipEndDate.getTime())
+    ? format(parsedMembershipEndDate, 'MMM d, yyyy')
+    : membershipEndDate
+      ? 'Unavailable'
+      : 'Lifetime';
 
   const getDashboardLink = () => {
     if (!user?.profile?.role) return '/login';
@@ -46,8 +63,8 @@ const ProfileMenu = ({ user, membership, onSignOut, isSigningOut, profileError, 
       <DropdownMenuContent align="end" className="w-72 bg-[#0F172A] border-[#1E293B] text-slate-100 p-2 rounded-xl shadow-2xl">
         <DropdownMenuLabel className="font-normal px-2 pt-3 pb-2">
           <div className="flex flex-col space-y-1">
-            <p className="text-[17px] font-semibold leading-none text-white tracking-tight">90 Layers</p>
-            <p className="text-[13px] leading-none text-slate-400">ninetylayers@gmail.com</p>
+            <p className="text-[17px] font-semibold leading-none text-white tracking-tight">{displayName}</p>
+            <p className="text-[13px] leading-none text-slate-400">{email}</p>
           </div>
         </DropdownMenuLabel>
         
@@ -60,16 +77,18 @@ const ProfileMenu = ({ user, membership, onSignOut, isSigningOut, profileError, 
             </div>
         )}
 
-        <div className="px-2 py-2 mb-1">
-          {/* Amber / Gold Accent Badge */}
-          <div className="bg-[#F59E0B]/10 border border-[#F59E0B]/20 rounded-lg p-3 flex flex-col">
-            <div className="flex items-center gap-2 text-[#F59E0B] mb-1">
-              <Crown className="h-[18px] w-[18px] fill-current" />
-              <span className="font-semibold text-sm tracking-wide">Business Pro</span>
+        {membershipPlanName && (
+          <div className="px-2 py-2 mb-1">
+            {/* Amber / Gold Accent Badge */}
+            <div className="bg-[#F59E0B]/10 border border-[#F59E0B]/20 rounded-lg p-3 flex flex-col">
+              <div className="flex items-center gap-2 text-[#F59E0B] mb-1">
+                <Crown className="h-[18px] w-[18px] fill-current" />
+                <span className="font-semibold text-sm tracking-wide">{membershipPlanName}</span>
+              </div>
+              <p className="text-[11px] text-[#F59E0B]/70 ml-[26px]">Valid until: {membershipValidity}</p>
             </div>
-            <p className="text-[11px] text-[#F59E0B]/70 ml-[26px]">Valid until: Lifetime</p>
           </div>
-        </div>
+        )}
 
         <DropdownMenuSeparator className="bg-[#1E293B] my-1 mx-2" />
 
