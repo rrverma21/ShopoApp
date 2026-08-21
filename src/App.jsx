@@ -68,7 +68,6 @@ const BulkOrderPage = lazy(() => import('@/pages/BulkOrderPage'));
 const LocalShopsPage = lazy(() => import('@/pages/LocalShopsPage'));
 const MyPosOrdersPage = lazy(() => import('@/pages/MyPosOrdersPage'));
 const CustomerPurchaseHistory = lazy(() => import('@/pages/CustomerPurchaseHistory'));
-const RiderSignupPage = lazy(() => import('@/pages/RiderSignupPage'));
 const WaterOrderPage = lazy(() => import('@/pages/WaterOrderPage'));
 const RetailerToolsPage = lazy(() => import('@/pages/RetailerToolsPage'));
 const ReferralDashboard = lazy(() => import('@/pages/ReferralDashboard'));
@@ -136,7 +135,6 @@ const AdminReferralPanel = lazy(() => import('@/pages/AdminReferralPanel'));
 
 const RetailerDashboard = lazy(() => import('@/pages/retailer/RetailerDashboard'));
 const RetailerLoginPage = lazy(() => import('@/pages/retailer/RetailerLoginPage'));
-const RetailerSignupPage = lazy(() => import('@/pages/retailer/RetailerSignupPage'));
 const PublicShopPage = lazy(() => import('@/pages/PublicShopPage'));
 const OrderConfirmation = lazy(() => import('@/pages/OrderConfirmation'));
 const OrderTracking = lazy(() => import('@/pages/OrderTracking'));
@@ -261,7 +259,7 @@ const AppRoutes = () => {
                     <Route path="/features/employee-management" element={<RouteSEO title="Employee Management"><MainLayout><EmployeeManagementPage /></MainLayout></RouteSEO>} />
                     <Route path="/features/smart-reordering" element={<RouteSEO title="Smart Re-ordering"><MainLayout><SmartReorderingPage /></MainLayout></RouteSEO>} />
                     
-                    <Route path="/rider-signup" element={<RouteSEO title="ShopoApp | Smart POS Billing, Inventory & Taxation Software"><MainLayout><RiderSignupPage /></MainLayout></RouteSEO>} />
+                    <Route path="/rider-signup" element={<Navigate to="/" replace />} />
                     <Route path="/products" element={<RouteSEO title="Wholesale Market"><MainLayout><ProductsPage /></MainLayout></RouteSEO>} />
                     <Route path="/product/:id" element={<RouteSEO title="Product Details"><MainLayout><ProductDetailsPage /></MainLayout></RouteSEO>} />
                     
@@ -321,7 +319,7 @@ const AppRoutes = () => {
                     <Route path="/verified" element={<RouteSEO title="ShopoApp | Smart POS Billing, Inventory & Taxation Software"><MainLayout><VerifiedPage /></MainLayout></RouteSEO>} />
                     
                     <Route path="/retailer-login" element={<RouteSEO title="Retailer Login"><RetailerLoginPage /></RouteSEO>} />
-                    <Route path="/retailer-signup" element={<RouteSEO title="Retailer Signup"><RetailerSignupPage /></RouteSEO>} />
+                    <Route path="/retailer-signup" element={<Navigate to="/seller-signup" replace />} />
 
                     {/* Sitemap Route */}
                     <Route path="/sitemap-generator" element={<SitemapPage />} />

@@ -48,7 +48,6 @@ const Header = () => {
   }, []);
 
   const isRider = user?.profile?.role === 'rider';
-  const isAdmin = user?.profile?.role === 'admin';
 
   const hasWholesalerAccess = user?.profile?.role === 'seller' && membership?.plan && (
     membership.plan.allowed_business_category?.toLowerCase().includes('wholesale') ||
@@ -129,17 +128,11 @@ const Header = () => {
               <Lightbulb className="w-4 h-4 text-yellow-500" /> Growth Center
             </NavItem>
             
-            {isRider ? (
+            {isRider && (
                <Link to="/rider/dashboard" className="flex items-center gap-1 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 font-semibold transition-all hover:scale-105 whitespace-nowrap">
                  <Bike className="h-4 w-4" />
                  {t('common.dashboard')}
                </Link>
-            ) : (
-               !isAdmin && (
-                 <Link to="/rider-signup" className="hover:text-[#FF6B35] transition-all hover:scale-105 text-xs flex items-center gap-1 text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                   <Bike className="h-3 w-3" /> Become a Rider
-                 </Link>
-               )
             )}
           </nav>
         </div>
@@ -292,10 +285,8 @@ const Header = () => {
                 <div className="space-y-1">
                   <h4 className="font-medium text-sm text-slate-500 mb-2 px-2">Services</h4>
                   <Link to="/water-order" onClick={closeSheet} className="block px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md">Water Order</Link>
-                  {isRider ? (
+                  {isRider && (
                     <Link to="/rider/dashboard" onClick={closeSheet} className="block px-4 py-2 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 rounded-md font-medium">Rider Dashboard</Link>
-                  ) : (
-                    <Link to="/rider-signup" onClick={closeSheet} className="block px-4 py-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-md">Become a Rider</Link>
                   )}
                 </div>
                 
