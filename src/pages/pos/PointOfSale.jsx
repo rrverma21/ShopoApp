@@ -7,7 +7,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { useDebounce } from '@/hooks/useDebounce';
 import { usePendingOrdersCount } from '@/hooks/usePendingOrdersCount';
 import { useRegion } from '@/contexts/RegionContext';
-import { Plus, Search, X, History, ShoppingCart, UserPlus, CreditCard, Banknote, Smartphone, Users, Package, RefreshCw, Save, PlayCircle, Briefcase, AlertCircle } from 'lucide-react';
+import { Plus, Search, X, History, ShoppingCart, UserPlus, CreditCard, Banknote, Smartphone, Users, RefreshCw, Save, PlayCircle, Briefcase, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -34,7 +34,6 @@ import FloatingChat from '@/components/pos/FloatingChat';
 import { useCategorySearch } from '@/hooks/useCategorySearch';
 import { useCustomerSearch } from '@/hooks/useCustomerSearch';
 import CommandListElement from '@/components/pos/CommandListElement';
-import MasterProductSelector from '@/components/pos/MasterProductSelector';
 import SalesCalendarPopup from '@/components/pos/SalesCalendarPopup';
 import PremiumPosGuide from '@/components/pos/PremiumPosGuide';
 import Sidebar from '@/components/pos/Sidebar';
@@ -69,7 +68,6 @@ const PointOfSale = () => {
   const [isCalculatorVisible, setCalculatorVisible] = useState(false);
   const [isNotepadVisible, setNotepadVisible] = useState(false);
   const [isChatVisible, setChatVisible] = useState(false);
-  const [isMasterProductSelectorOpen, setMasterProductSelectorOpen] = useState(false);
   
   const [todaysSales, setTodaysSales] = useState(0);
   const [salesData, setSalesData] = useState([]);
@@ -422,31 +420,6 @@ const PointOfSale = () => {
     }
   };
 
-  const addMasterProductsToLocal = async (selectedProducts) => {
-      if (!user) return;
-      const newProducts = selectedProducts.map(p => ({
-          user_id: user.id,
-          name: p.product_name,
-          cost_price: p.purchase_price || 0,
-          selling_price: p.selling_price || 0,
-          tax_rate: p.gst_rate || 0,
-          stock_level: 0,
-          category: p.category || 'Uncategorized',
-          hsn_code: p.hsn_sac || '',
-          barcode: p.barcode || '',
-          image_url: p.image_url || '',
-          allow_price_change: true,
-      }));
-      const { data, error } = await supabase.from('point_of_sale_products').insert(newProducts).select();
-      if (error) {
-          toast({ title: 'Error importing products', description: error.message, variant: 'destructive' });
-      } else {
-          toast({ title: `${data.length} products imported successfully!` });
-          fetchProducts();
-      }
-      setMasterProductSelectorOpen(false);
-  };
-
   const handleSaveSuccess = (shouldClearCart) => {
     if (shouldClearCart) {
       setCart([]);
@@ -525,7 +498,6 @@ const PointOfSale = () => {
 
             <div className="flex gap-2 shrink-0">
                 <BarcodeScanner onScan={handleBarcodeScan} />
-                <Button onClick={() => setMasterProductSelectorOpen(true)} variant="outline" className="h-12"><Package className="mr-2 h-4 w-4"/> Import</Button>
                 <Button onClick={fetchProducts} variant="outline" className="h-12 w-12 p-0"><RefreshCw className="h-4 w-4"/></Button>
             </div>
           </header>
@@ -700,7 +672,6 @@ const PointOfSale = () => {
         </aside>
 
         <AddCustomerDialog isOpen={isAddCustomerOpen} onClose={() => setIsAddCustomerOpen(false)} onSuccess={(newCustomer) => { handleSelectCustomer(newCustomer); setIsAddCustomerOpen(false); }} />
-        <MasterProductSelector open={isMasterProductSelectorOpen} onOpenChange={setMasterProductSelectorOpen} onConfirm={addMasterProductsToLocal} />
         <CashPaymentDialog open={isCashDialogOpen} onOpenChange={setIsCashDialogOpen} totalAmount={total} onComplete={(received) => processPayment({ received })} isProcessing={isLoading} />
         <SplitPaymentDialog isOpen={isSplitDialogOpen} onClose={() => setIsSplitDialogOpen(false)} totalAmount={total} onConfirm={processPayment} />
         <CreditConfirmDialog isOpen={isCreditConfirmOpen} onClose={() => setIsCreditConfirmOpen(false)} customer={customer} totalAmount={total} onConfirm={processPayment} />

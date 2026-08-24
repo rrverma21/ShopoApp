@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
@@ -8,7 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2, Camera, Search, AlertCircle, Edit2, X, Image as ImageIcon } from 'lucide-react';
 import { motion } from 'framer-motion';
-import SuggestEditModal from '@/components/SuggestEditModal';
 import SubmissionReceipt from '@/components/SubmissionReceipt';
 import { useDebounce } from '@/hooks/useDebounce';
 import BarcodeScanner from '@/components/pos/BarcodeScanner';
@@ -21,10 +20,11 @@ const ContributeProductForm = () => {
   
   const [loading, setLoading] = useState(false);
   const [checkingBarcode, setCheckingBarcode] = useState(false);
-  const [existingProduct, setExistingProduct] = useState(null);
   const [duplicateContribution, setDuplicateContribution] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
+  const [barcodeLookupError, setBarcodeLookupError] = useState(null);
+  const [barcodeLookupRetry, setBarcodeLookupRetry] = useState(0);
   const [submissionData, setSubmissionData] = useState(null);
+  const barcodeLookupSequence = useRef(0);
   
   const [frontImage, setFrontImage] = useState(null);
   const [frontPreview, setFrontPreview] = useState(null);
@@ -38,6 +38,13 @@ const ContributeProductForm = () => {
 
   const barcodeValue = watch('barcode');
   const debouncedBarcode = useDebounce(barcodeValue, 500); // 500ms debounce as requested
+
+  useEffect(() => {
+    ++barcodeLookupSequence.current;
+    setDuplicateContribution(false);
+    setBarcodeLookupError(null);
+    setCheckingBarcode(Boolean(barcodeValue?.trim().length >= 3));
+  }, [barcodeValue]);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -54,50 +61,42 @@ const ContributeProductForm = () => {
       const cleanBarcode = debouncedBarcode?.trim();
       
       if (!cleanBarcode || cleanBarcode.length < 3) {
-        setExistingProduct(null);
+        ++barcodeLookupSequence.current;
         setDuplicateContribution(false);
+        setBarcodeLookupError(null);
+        setCheckingBarcode(false);
         return;
       }
       
+      const requestId = ++barcodeLookupSequence.current;
       setCheckingBarcode(true);
       setDuplicateContribution(false);
+      setBarcodeLookupError(null);
       
       try {
-        // 1. Check if product already exists in the master catalog
-        const { data: masterData, error: masterError } = await supabase
-          .from('product_master')
-          .select('*')
+        const { data: contribData, error: contribError } = await supabase
+          .from('product_contributions')
+          .select('id')
           .ilike('barcode', cleanBarcode)
+          .limit(1)
           .maybeSingle();
 
-        if (masterData) {
-          setExistingProduct(masterData);
-          setDuplicateContribution(false);
-        } else {
-          setExistingProduct(null);
-          
-          // 2. Check if product has already been contributed (Real-time duplicate check)
-          const { data: contribData, error: contribError } = await supabase
-            .from('product_contributions')
-            .select('id')
-            .ilike('barcode', cleanBarcode)
-            .maybeSingle();
-            
-          if (contribData) {
-            setDuplicateContribution(true);
-          } else {
-            setDuplicateContribution(false);
-          }
-        }
+        if (contribError) throw contribError;
+        if (requestId !== barcodeLookupSequence.current) return;
+
+        setDuplicateContribution(!!contribData);
       } catch (err) {
+        if (requestId !== barcodeLookupSequence.current) return;
         console.error("Barcode check failed:", err);
+        setDuplicateContribution(false);
+        setBarcodeLookupError(err.message || 'Unable to verify this barcode. Please retry.');
       } finally {
-        setCheckingBarcode(false);
+        if (requestId === barcodeLookupSequence.current) setCheckingBarcode(false);
       }
     };
 
     checkBarcode();
-  }, [debouncedBarcode]);
+  }, [debouncedBarcode, barcodeLookupRetry]);
 
   const handleScan = (code) => {
     const cleanCode = code?.trim();
@@ -148,8 +147,13 @@ const ContributeProductForm = () => {
   };
 
   const onSubmit = async (formData) => {
-    if (existingProduct) {
-      setShowEditModal(true);
+    if (checkingBarcode) {
+      toast({ title: "Checking Barcode", description: "Please wait for barcode validation to finish.", variant: "destructive" });
+      return;
+    }
+
+    if (barcodeLookupError) {
+      toast({ title: "Barcode Check Failed", description: barcodeLookupError, variant: "destructive" });
       return;
     }
 
@@ -319,7 +323,7 @@ const ContributeProductForm = () => {
                         }
                       }
                     })}
-                    className={existingProduct || duplicateContribution ? "border-orange-300 pr-24" : "pr-24"}
+                    className={duplicateContribution || barcodeLookupError ? "border-orange-300 pr-24" : "pr-24"}
                   />
                   
                   {/* Scanner Button */}
@@ -347,9 +351,22 @@ const ContributeProductForm = () => {
                   </div>
                 </div>
                 {errors.barcode && <p className="text-xs text-red-500">{errors.barcode.message}</p>}
+
+                {barcodeLookupError && !checkingBarcode && (
+                  <div className="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-lg p-3 text-sm flex items-start gap-3 mt-2">
+                    <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="font-semibold text-red-800 dark:text-red-300">Barcode check failed</p>
+                      <p className="text-red-700 dark:text-red-400 mt-1">{barcodeLookupError}</p>
+                      <Button type="button" size="sm" variant="outline" className="mt-2" onClick={() => setBarcodeLookupRetry(value => value + 1)}>
+                        Retry barcode check
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 
                 {/* Duplicate Contribution Warning */}
-                {duplicateContribution && !checkingBarcode && !existingProduct && (
+                {duplicateContribution && !checkingBarcode && (
                   <motion.div 
                     initial={{ opacity: 0, height: 0 }}
                     animate={{ opacity: 1, height: 'auto' }}
@@ -376,36 +393,10 @@ const ContributeProductForm = () => {
                   </motion.div>
                 )}
 
-                {/* Existing Product Alert */}
-                {existingProduct && !checkingBarcode && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg p-3 text-sm flex items-start gap-3"
-                  >
-                    <AlertCircle className="h-5 w-5 text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="font-medium text-orange-800 dark:text-orange-200">Product Found!</p>
-                      <p className="text-orange-700 dark:text-orange-300 mt-1 mb-2">
-                        "{existingProduct.product_name}" is already in our catalog.
-                      </p>
-                      <Button 
-                        type="button" 
-                        size="sm" 
-                        variant="outline" 
-                        className="w-full bg-white dark:bg-black border-orange-300 text-orange-700 hover:bg-orange-50"
-                        onClick={() => setShowEditModal(true)}
-                      >
-                        <Edit2 className="h-3 w-3 mr-2" /> Suggest Edit Instead
-                      </Button>
-                    </div>
-                  </motion.div>
-                )}
               </div>
 
-              {/* Product Details (Hidden if existing found) */}
-              {!existingProduct && (
-                <motion.div 
+              {/* Product Details */}
+              <motion.div
                   initial={{ opacity: 0 }} 
                   animate={{ opacity: 1 }} 
                   className="space-y-4"
@@ -440,22 +431,14 @@ const ContributeProductForm = () => {
                   <Button 
                     type="submit" 
                     className="w-full" 
-                    disabled={loading || duplicateContribution || checkingBarcode}
+                    disabled={loading || duplicateContribution || checkingBarcode || !!barcodeLookupError}
                   >
                     {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Submit Contribution"}
                   </Button>
-                </motion.div>
-              )}
+              </motion.div>
             </form>
           </CardContent>
         </Card>
-
-        <SuggestEditModal 
-          isOpen={showEditModal} 
-          onClose={() => setShowEditModal(false)}
-          product={existingProduct}
-          initialBarcode={barcodeValue}
-        />
 
         <BarcodeScanner 
           isOpen={showScanner}

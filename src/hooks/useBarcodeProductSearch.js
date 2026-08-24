@@ -1,24 +1,35 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useDebounce } from '@/hooks/useDebounce';
 import { validateBarcode } from '@/lib/barcodeValidation';
 
 /**
- * Hook to search for a product across the global master and user-contributed catalogs by barcode.
- * Corrected to map to standard image_url and images array instead of legacy image_1_url.
+ * Searches the current user's active POS inventory by barcode.
  */
-export function useBarcodeProductSearch(barcodeValue) {
+export function useBarcodeProductSearch(barcodeValue, posUserId) {
   const debouncedBarcode = useDebounce(barcodeValue, 500);
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const requestSequence = useRef(0);
+
+  useEffect(() => {
+    ++requestSequence.current;
+    setProduct(null);
+    setError(null);
+
+    const validation = validateBarcode(barcodeValue || '');
+    setLoading(Boolean(posUserId && validation.isValid));
+  }, [barcodeValue, posUserId]);
 
   const searchBarcode = useCallback(async (codeToSearch = null) => {
+    const requestId = ++requestSequence.current;
     const code = codeToSearch !== null ? codeToSearch : debouncedBarcode;
     
-    if (!code) {
+    if (!code || !posUserId) {
       setProduct(null);
       setError(null);
+      setLoading(false);
       return;
     }
 
@@ -28,6 +39,7 @@ export function useBarcodeProductSearch(barcodeValue) {
       console.log(`[Barcode Search] Validation failed: ${validation.error}`);
       setProduct(null);
       setError(null);
+      setLoading(false);
       return;
     }
 
@@ -35,85 +47,39 @@ export function useBarcodeProductSearch(barcodeValue) {
     setError(null);
 
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const currentUser = sessionData?.session?.user;
-      console.log(`[Barcode Search] Attempting fetch for barcode: "${validation.cleanBarcode}"`);
-      console.log(`[Barcode Search] Current User Context ID:`, currentUser?.id || 'Unauthenticated');
-
-      // First check the global master catalog (always public/authenticated)
-      console.log(`[Barcode Search] Querying 'product_master' table...`);
-      const { data: masterData, error: masterError } = await supabase
-        .from('product_master')
-        .select('barcode, product_name, mrp, image_url')
-        .ilike('barcode', validation.cleanBarcode)
+      const { data, error: queryError } = await supabase
+        .from('point_of_sale_products')
+        .select('id, barcode, name, selling_price, image_url, images, category, sku, unit')
+        .eq('user_id', posUserId)
+        .eq('barcode', validation.cleanBarcode)
+        .eq('archived', false)
+        .limit(1)
         .maybeSingle();
 
-      if (masterError) {
-        console.error("[Barcode Search] Error querying product_master:", masterError);
-        throw masterError;
-      }
+      if (queryError) throw queryError;
+      if (requestId !== requestSequence.current) return;
 
-      if (masterData) {
-        console.log("[Barcode Search] Found in global product_master:", masterData);
-        setProduct({
-          barcode: masterData.barcode,
-          name: masterData.product_name,
-          mrp: masterData.mrp,
-          image_url: masterData.image_url,
-          images: masterData.image_url ? [masterData.image_url] : [],
-          category: null,
-          sku: null
-        });
-        return; // Exit early if found in master
-      }
-
-      // If not in master, check product_contributions (now globally readable via updated RLS)
-      console.log(`[Barcode Search] Not found in master. Querying 'product_contributions' table...`);
-      const { data: contribData, error: contribError } = await supabase
-        .from('product_contributions')
-        .select('barcode, product_name, mrp, image_url, image_url_back')
-        .ilike('barcode', validation.cleanBarcode)
-        .maybeSingle();
-
-      if (contribError) {
-        console.error("[Barcode Search] Error querying product_contributions:", contribError);
-        throw contribError;
-      }
-
-      if (contribData) {
-        console.log("[Barcode Search] Found in product_contributions:", contribData);
-        setProduct({
-          barcode: contribData.barcode,
-          name: contribData.product_name,
-          mrp: contribData.mrp,
-          image_url: contribData.image_url,
-          images: [contribData.image_url, contribData.image_url_back].filter(Boolean),
-          category: null,
-          sku: null
-        });
-      } else {
-        console.log(`[Barcode Search] INFO: 0 results found for barcode ${validation.cleanBarcode} across all catalogs. User ID: ${currentUser?.id || 'None'}`);
-        setProduct(null);
-      }
+      setProduct(data || null);
     } catch (err) {
-      console.error("[Barcode Search] Exception caught during search:", err);
-      const errorMessage = err.message || err.details || err.hint || "Failed to fetch product details. Database connection or query error.";
-      setError(`Search Error: ${errorMessage}`);
+      if (requestId !== requestSequence.current) return;
+      console.error('[Barcode Search] POS inventory lookup failed:', err);
+      setError(err.message || 'Failed to check your POS inventory. Please retry.');
       setProduct(null);
     } finally {
-      setLoading(false);
-      console.log(`[Barcode Search] Search process completed.`);
+      if (requestId === requestSequence.current) setLoading(false);
     }
-  }, [debouncedBarcode]);
+  }, [debouncedBarcode, posUserId]);
 
   useEffect(() => {
-    if (debouncedBarcode) {
+    if (debouncedBarcode && posUserId) {
       searchBarcode();
     } else {
+      ++requestSequence.current;
       setProduct(null);
       setError(null);
+      setLoading(false);
     }
-  }, [debouncedBarcode, searchBarcode]);
+  }, [debouncedBarcode, posUserId, searchBarcode]);
 
   return { product, loading, error, searchBarcode };
 }

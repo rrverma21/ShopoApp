@@ -7,12 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabaseClient";
-import { Loader2, CheckCircle2, RefreshCw, Camera, X, Sparkles, Search, AlertCircle } from "lucide-react";
+import { Loader2, CheckCircle2, RefreshCw, Camera, AlertCircle } from "lucide-react";
 import JsBarcode from 'jsbarcode';
 import BarcodeScanner from './BarcodeScanner';
-import ImageUploadField from './ImageUploadField';
-import BarcodeProductPreview from './BarcodeProductPreview';
-import { uploadProductImages } from '@/lib/imageUploadUtils';
 import { useBarcodeProductSearch } from '@/hooks/useBarcodeProductSearch';
 import { validateBarcode } from '@/lib/barcodeValidation';
 import { generateUniqueSku } from '@/lib/skuGenerator';
@@ -51,13 +48,8 @@ const QuickAddPosProductModal = ({ open, onOpenChange, onProductAdded, posUserId
         sku: false
     });
 
-    const [imageFile1, setImageFile1] = useState(null);
-    const [imageFile2, setImageFile2] = useState(null);
-    const [autoFilledImages, setAutoFilledImages] = useState({ url1: null, url2: null });
-
     const [errors, setErrors] = useState({});
     const [showScanner, setShowScanner] = useState(false);
-    const [showPreview, setShowPreview] = useState(false);
     
     const barcodeInputRef = useRef(null);
     const nameInputRef = useRef(null);
@@ -67,7 +59,7 @@ const QuickAddPosProductModal = ({ open, onOpenChange, onProductAdded, posUserId
         loading: searchingBarcode, 
         error: searchError,
         searchBarcode 
-    } = useBarcodeProductSearch(formData.barcode);
+    } = useBarcodeProductSearch(formData.barcode, posUserId);
 
     const resetForm = useCallback(async () => {
         let newSku = '';
@@ -88,13 +80,9 @@ const QuickAddPosProductModal = ({ open, onOpenChange, onProductAdded, posUserId
             allow_quantity_change: false,
             unit: 'pcs'
         });
-        setImageFile1(null);
-        setImageFile2(null);
-        setAutoFilledImages({ url1: null, url2: null });
         setAutoFilledFields({ name: false, category: false, selling_price: false, sku: !!newSku });
         setErrors({});
         setShowScanner(false);
-        setShowPreview(false);
         
         setTimeout(() => {
             if (barcodeInputRef.current) {
@@ -142,48 +130,6 @@ const QuickAddPosProductModal = ({ open, onOpenChange, onProductAdded, posUserId
             } catch (e) {}
         }
     }, [formData.barcode, open]);
-
-    useEffect(() => {
-        if (foundProduct && formData.barcode) {
-            const performFill = async () => {
-                toast({
-                    title: "Product Found in Database!",
-                    description: `Auto-filled details for ${foundProduct.name}`,
-                });
-                
-                let resolvedSku = foundProduct.sku;
-                if (!resolvedSku && autoFilledFields.sku) {
-                    resolvedSku = await generateUniqueSku(foundProduct.name, posUserId);
-                } else if (!resolvedSku) {
-                    resolvedSku = formData.sku; 
-                }
-                
-                setFormData(prev => ({
-                    ...prev,
-                    name: foundProduct.name || prev.name,
-                    category: foundProduct.category || prev.category,
-                    selling_price: foundProduct.mrp ? String(foundProduct.mrp) : prev.selling_price,
-                    sku: resolvedSku,
-                    unit: foundProduct.unit || prev.unit
-                }));
-
-                setAutoFilledFields({
-                    name: !!foundProduct.name,
-                    category: !!foundProduct.category,
-                    selling_price: !!foundProduct.mrp,
-                    sku: !!resolvedSku
-                });
-
-                setAutoFilledImages({
-                    url1: foundProduct.image_url || foundProduct.images?.[0] || null,
-                    url2: foundProduct.images?.[1] || null
-                });
-
-                setShowPreview(true);
-            };
-            performFill();
-        }
-    }, [foundProduct, searchingBarcode, formData.barcode, toast, posUserId]);
 
     const handleDone = () => {
         onOpenChange(false);
@@ -244,6 +190,16 @@ const QuickAddPosProductModal = ({ open, onOpenChange, onProductAdded, posUserId
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        if (foundProduct) {
+            toast({ title: "Already in your inventory", description: `${foundProduct.name} already uses this barcode.`, variant: "destructive" });
+            return;
+        }
+
+        if (searchingBarcode || searchError) {
+            toast({ title: "Barcode check required", description: searchError || "Please wait for the barcode check to finish.", variant: "destructive" });
+            return;
+        }
         
         if (!validateForm()) {
             toast({ title: "Validation Error", description: "Check required fields.", variant: "destructive" });
@@ -265,8 +221,6 @@ const QuickAddPosProductModal = ({ open, onOpenChange, onProductAdded, posUserId
                 stock_level: parseInt(formData.current_stocks),
                 tax_rate: parseFloat(formData.tax_rate) || 0,
                 unit: formData.unit,
-                image_url: autoFilledImages.url1,
-                images: [autoFilledImages.url1, autoFilledImages.url2].filter(Boolean)
             };
 
             const { error: insertError } = await supabase
@@ -322,6 +276,20 @@ const QuickAddPosProductModal = ({ open, onOpenChange, onProductAdded, posUserId
                                     </Button>
                                 </div>
                                 {errors.barcode && <p className="text-xs text-destructive">{errors.barcode}</p>}
+                                {foundProduct && !searchingBarcode && (
+                                    <div className="flex items-start gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+                                        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                                        <span><strong>Already in your inventory:</strong> {foundProduct.name}</span>
+                                    </div>
+                                )}
+                                {searchError && !searchingBarcode && (
+                                    <div className="flex items-center justify-between gap-3 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700">
+                                        <span>{searchError}</span>
+                                        <Button type="button" size="sm" variant="outline" onClick={() => searchBarcode(formData.barcode)}>
+                                            <RefreshCw className="mr-1 h-3 w-3" /> Retry
+                                        </Button>
+                                    </div>
+                                )}
                                 <div className="h-10 bg-muted flex items-center justify-center rounded border border-dashed border-border overflow-hidden">
                                      {formData.barcode ? <svg id="barcode-preview" className="h-8 max-w-full text-foreground"></svg> : <span className="text-xs text-muted-foreground">Barcode Preview</span>}
                                 </div>
@@ -403,7 +371,7 @@ const QuickAddPosProductModal = ({ open, onOpenChange, onProductAdded, posUserId
 
                         <div className="pt-4 border-t border-border flex justify-end gap-3">
                             <Button type="button" variant="outline" onClick={handleDone}>Cancel</Button>
-                            <Button type="submit" disabled={loading} className="px-8">
+                            <Button type="submit" disabled={loading || searchingBarcode || !!foundProduct || !!searchError} className="px-8">
                                 {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
                                 Save Product
                             </Button>

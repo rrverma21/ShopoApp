@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Edit, Trash2, Search, MoreVertical, FileDown, FileUp, X, Barcode, ChevronDown, ChevronUp, Image as ImageIcon, Zap, Copy, Info, Calculator as CalculatorIcon, UploadCloud, Eye, EyeOff, ShoppingCart } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, MoreVertical, FileDown, FileUp, X, Barcode, ChevronDown, ChevronUp, Image as ImageIcon, Zap, Copy, Info, Calculator as CalculatorIcon, UploadCloud, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -43,7 +43,6 @@ import { Badge } from '@/components/ui/badge';
 import ImageZoom from '@/components/ImageZoom';
 import Calculator from '@/components/ui/calculator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import ImportPosProductsDialog from './ImportPosProductsDialog';
 import MultiImageUploader from './MultiImageUploader';
 import VariantBarcodeManager from './VariantBarcodeManager';
 import VariantStockDisplay from '@/components/pos/VariantStockDisplay';
@@ -524,7 +523,6 @@ const ProductManagement = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(null);
   const [showImportDialog, setShowImportDialog] = useState(false);
-  const [showPosImportDialog, setShowPosImportDialog] = useState(false);
   const [importFile, setImportFile] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
 
@@ -791,11 +789,6 @@ const ProductManagement = () => {
     document.body.removeChild(link);
   };
 
-  const handleProductsImported = () => {
-    fetchProducts();
-    fetchMeta();
-  };
-  
   const cardVariants = {
     hidden: { opacity: 0, y: 30 },
     visible: (i) => ({
@@ -827,13 +820,11 @@ const ProductManagement = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                   <DropdownMenuItem onClick={() => setShowImportDialog(true)}><FileUp className="mr-2 h-4 w-4" />Import CSV</DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => setShowPosImportDialog(true)}><ShoppingCart className="mr-2 h-4 w-4" />Import from POS</DropdownMenuItem>
                   <DropdownMenuItem onClick={handleExport}><FileDown className="mr-2 h-4 w-4" />Export CSV</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               <div className="hidden sm:flex items-center gap-2">
                 <Button variant="outline" onClick={() => setShowImportDialog(true)}><FileUp className="mr-2 h-4 w-4" />Import CSV</Button>
-                <Button variant="outline" onClick={() => setShowPosImportDialog(true)}><ShoppingCart className="mr-2 h-4 w-4" /> Import from POS</Button>
                 <Button variant="outline" onClick={handleExport}><FileDown className="mr-2 h-4 w-4" /> Export</Button>
               </div>
             </div>
@@ -1062,11 +1053,6 @@ const ProductManagement = () => {
         </DialogContent>
       </Dialog>
 
-      <ImportPosProductsDialog
-        open={showPosImportDialog}
-        onOpenChange={setShowPosImportDialog}
-        onProductsImported={handleProductsImported}
-      />
     </motion.div>
   );
 };

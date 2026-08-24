@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { Loader2, Wand2, Save, Database, Play, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
+import { Loader2, Wand2, Save, Play, CheckCircle2, AlertCircle, ExternalLink } from 'lucide-react';
 import { Helmet } from 'react-helmet-async';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -28,7 +28,6 @@ const ProductScraper = () => {
     const [selectedProducts, setSelectedProducts] = useState(new Set());
     
     const [isSaving, setIsSaving] = useState(false);
-    const [isSavingToMaster, setIsSavingToMaster] = useState(false);
     
     const [categories, setCategories] = useState([]);
     const [brands, setBrands] = useState([]);
@@ -310,51 +309,6 @@ const ProductScraper = () => {
         }
     };
 
-    const handleBulkSaveToMaster = async () => {
-        setIsSavingToMaster(true);
-        let savedCount = 0;
-        try {
-            const itemsToSave = bulkScrapedData.filter((_, idx) => selectedProducts.has(idx));
-
-             if (itemsToSave.length === 0) {
-                toast({ title: "No Items Selected", description: "Please select at least one item to save.", variant: "destructive" });
-                setIsSavingToMaster(false);
-                return;
-            }
-
-            for (const item of itemsToSave) {
-                if (item.status !== 'success' || !item.data) continue;
-
-                const scraped = item.data;
-                const categoryName = scraped.categories ? scraped.categories.split(',')[0].trim() : 'Uncategorized';
-                const cleanPriceVal = cleanPrice(scraped.price);
-                const imageUrl = scraped.images ? scraped.images.split(',')[0].trim() : null;
-                const notes = [scraped.short_description, scraped.long_description].filter(Boolean).join('\n').substring(0, 1000);
-
-                const payload = {
-                    name: scraped.title,
-                    sku: scraped.sku || null,
-                    category: categoryName,
-                    mrp: cleanPriceVal,
-                    selling_price: cleanPriceVal,
-                    unit: 'pcs',
-                    notes: notes || null,
-                    image_url: imageUrl
-                };
-
-                const { error } = await supabase.from('product_master').insert(payload);
-                if (!error) savedCount++;
-            }
-            
-            toast({ title: "Bulk Master Add Complete", description: `Added ${savedCount} products to Master.` });
-
-        } catch (error) {
-            toast({ title: "Master Save Error", description: error.message, variant: "destructive" });
-        } finally {
-            setIsSavingToMaster(false);
-        }
-    };
-    
     const handleSaveSingleToProducts = async () => {
          if (!singleScrapedData) return;
          setIsSaving(true);
@@ -389,32 +343,6 @@ const ProductScraper = () => {
          } finally {
              setIsSaving(false);
          }
-    };
-
-    const handleSaveSingleToMaster = async () => {
-        if (!singleScrapedData) return;
-        setIsSavingToMaster(true);
-        try {
-            const scraped = singleScrapedData;
-            const cleanPriceVal = cleanPrice(scraped.price);
-            const imageUrl = scraped.images ? scraped.images.split(',')[0].trim() : null;
-            
-            const payload = {
-                name: scraped.title,
-                sku: scraped.sku || null,
-                category: scraped.categories ? scraped.categories.split(',')[0].trim() : 'Uncategorized',
-                mrp: cleanPriceVal,
-                selling_price: cleanPriceVal,
-                unit: 'pcs',
-                image_url: imageUrl
-            };
-            await supabase.from('product_master').insert(payload);
-            toast({ title: 'Saved!', description: 'Product added to Master Catalog.' });
-        } catch(e) {
-             toast({ title: 'Error', description: e.message, variant: 'destructive' });
-        } finally {
-            setIsSavingToMaster(false);
-        }
     };
 
     return (
@@ -500,11 +428,8 @@ const ProductScraper = () => {
                                 <CardTitle>Scraped Data</CardTitle>
                             </div>
                             <div className="flex gap-2">
-                                <Button onClick={handleSaveSingleToProducts} disabled={isSaving || isSavingToMaster} size="sm">
+                                <Button onClick={handleSaveSingleToProducts} disabled={isSaving} size="sm">
                                     <Save className="mr-2 h-4 w-4" /> Save
-                                </Button>
-                                <Button onClick={handleSaveSingleToMaster} disabled={isSaving || isSavingToMaster} variant="secondary" size="sm">
-                                    <Database className="mr-2 h-4 w-4" /> Add to Master
                                 </Button>
                             </div>
                         </CardHeader>
@@ -533,20 +458,11 @@ const ProductScraper = () => {
                                     <Button 
                                         variant="outline" 
                                         size="sm"
-                                        disabled={selectedProducts.size === 0 || isSaving || isSavingToMaster}
+                                        disabled={selectedProducts.size === 0 || isSaving}
                                         onClick={handleBulkSaveToProducts}
                                     >
                                         {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Save className="mr-2 h-4 w-4" />}
                                         Save Selected ({selectedProducts.size})
-                                    </Button>
-                                    <Button 
-                                        variant="secondary" 
-                                        size="sm"
-                                        disabled={selectedProducts.size === 0 || isSaving || isSavingToMaster}
-                                        onClick={handleBulkSaveToMaster}
-                                    >
-                                        {isSavingToMaster ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Database className="mr-2 h-4 w-4" />}
-                                        Add to Master ({selectedProducts.size})
                                     </Button>
                                 </div>
                             </div>
