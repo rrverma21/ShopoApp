@@ -272,13 +272,6 @@ begin
                  as requested_position(array_index)
       ) as requested on requested.product_id = product.id;
 
-    insert into public.notifications (order_id, recipient_id, message)
-    values (
-        v_order_id,
-        p_seller_id,
-        'A new order has been placed for your products by an admin/salesman.'
-    );
-
     return pg_catalog.jsonb_build_object(
         'order_id', v_order_id,
         'subtotal', v_subtotal,
