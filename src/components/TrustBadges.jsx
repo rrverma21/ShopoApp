@@ -1,19 +1,19 @@
 import React from 'react';
-import { ShieldCheck, Truck, CreditCard, Lock, Building2 } from 'lucide-react';
+import { ShieldCheck, Store, CreditCard, Lock, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const TrustBadges = ({ className, layout = 'row', variant = 'default' }) => {
   const badges = [
     {
       icon: Building2,
-      title: "B2B Marketplace",
-      desc: "B2BNexus connects wholesalers & retailers. We do not sell physical goods directly.",
+      title: "Retail Business Tools",
+      desc: "POS billing, inventory, customer management, and reporting in one platform.",
       color: "text-blue-600 bg-blue-50"
     },
     {
-      icon: Truck,
-      title: "Cash on Delivery",
-      desc: "All product orders are fulfilled by wholesalers via Cash on Delivery (COD).",
+      icon: Store,
+      title: "Digital Shop",
+      desc: "Give local customers a convenient way to browse and order from your shop.",
       color: "text-green-600 bg-green-50"
     },
     {
@@ -34,10 +34,10 @@ const TrustBadges = ({ className, layout = 'row', variant = 'default' }) => {
     return (
       <div className={cn("flex flex-wrap gap-3 text-xs text-slate-500", className)}>
         <span className="flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-md">
-          <Building2 className="w-3 h-3" /> Marketplace Platform
+          <Building2 className="w-3 h-3" /> Business Platform
         </span>
         <span className="flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-md">
-          <Truck className="w-3 h-3" /> Product COD Only
+          <Store className="w-3 h-3" /> Digital Shop
         </span>
         <span className="flex items-center gap-1 bg-slate-100 px-2 py-1 rounded-md">
           <Lock className="w-3 h-3" /> Secure Data

@@ -33,10 +33,9 @@ const AboutPage = () => {
                  <div>
                     <h3 className="font-bold text-blue-900 text-lg mb-2">Our Business Model</h3>
                     <p className="text-blue-800 leading-relaxed">
-                       <strong>ShopoApp is a B2B marketplace facilitator.</strong> We do not sell or own physical inventory. 
-                       Our platform connects independent wholesalers with retailers. Product transactions are fulfilled directly 
-                       by suppliers via Cash on Delivery (COD). We provide the digital infrastructure, POS software, and 
-                       connection tools for which we charge membership subscriptions.
+                       <strong>ShopoApp is a retail business software platform.</strong> We provide POS billing, inventory,
+                       customer management, Digital Shop, and related operational tools through membership subscriptions.
+                       We do not sell or own physical inventory.
                     </p>
                  </div>
               </CardContent>
@@ -65,17 +64,17 @@ const AboutPage = () => {
             <h2 className="text-3xl font-bold text-slate-800">Who We Are</h2>
             <div className="prose prose-lg text-slate-600 leading-relaxed">
               <p className="mb-4">
-                ShopoApp is a product of <span className="font-bold text-blue-600">Zyvora Technologies Pvt. Ltd.</span>, a registered technology company dedicated to modernizing the B2B supply chain in India. We recognized the fragmentation in the wholesale-retail market and built a platform to bridge this gap.
+                ShopoApp is a product of <span className="font-bold text-blue-600">Zyvora Technologies Pvt. Ltd.</span>, a registered technology company dedicated to helping Indian retail businesses modernize their daily operations.
               </p>
               <p className="mb-4">
-                Our platform serves two key roles:
+                Our platform supports key parts of running a retail business:
               </p>
               <ul className="list-disc pl-5 space-y-2">
-                 <li><strong>For Retailers:</strong> We provide a comprehensive suite of tools (POS, Inventory, Online Store) to digitize their operations.</li>
-                 <li><strong>For Wholesalers:</strong> We offer a digital marketplace to list products and reach a wider network of retail buyers.</li>
+                 <li><strong>Store Operations:</strong> POS billing, inventory, customer records, GST workflows, and reporting.</li>
+                 <li><strong>Digital Commerce:</strong> A Digital Shop that businesses can share with their local customers.</li>
               </ul>
               <p className="mt-4">
-                We believe in fair trade and transparency. By facilitating direct connections and enabling Cash on Delivery payments, we ensure trust remains at the center of every transaction.
+                We focus on practical, secure tools that help businesses maintain accurate records and serve their customers efficiently.
               </p>
             </div>
           </motion.div>

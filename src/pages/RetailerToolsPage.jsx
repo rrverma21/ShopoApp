@@ -121,7 +121,7 @@ const RetailerToolsPage = () => {
   }, {
     icon: Store,
     title: "Inventory Management",
-    desc: "Track stock levels in real-time. Automatically update inventory when you receive wholesale orders from B2B Nexus suppliers.",
+    desc: "Track stock levels in real-time and keep purchasing decisions informed with accurate inventory data.",
     gradient: "from-emerald-500 to-teal-600",
     shadow: "shadow-emerald-500/20",
     path: "/features/inventory-management"

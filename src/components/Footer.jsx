@@ -15,12 +15,12 @@ const Footer = () => {
               <span className="text-2xl font-bold text-white">ShopoApp</span>
             </Link>
             <p className="text-slate-400 text-sm leading-relaxed">
-              Empowering local businesses with enterprise-grade commerce solutions. A comprehensive platform for retail management, B2B procurement, and hyperlocal delivery.
+              Empowering local businesses with practical tools for POS billing, inventory management, customer records, Digital Shop, and delivery services.
             </p>
             <div className="flex items-center gap-2 mt-4">
                 <div className="flex items-center gap-1 bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
                     <ShieldCheck className="w-4 h-4 text-green-500" />
-                    <span className="text-xs font-medium text-white">Verified B2B</span>
+                    <span className="text-xs font-medium text-white">Business Tools</span>
                 </div>
                 <div className="flex items-center gap-1 bg-slate-800 px-3 py-1.5 rounded-full border border-slate-700">
                     <Lock className="w-4 h-4 text-blue-500" />
@@ -89,7 +89,7 @@ const Footer = () => {
             &copy; {currentYear} <strong>Zyvora Technologies Pvt. Ltd.</strong> All Rights Reserved.
           </p>
           <p className="text-slate-600 text-xs mt-2">
-            ShopoApp is a B2B marketplace platform. We do not sell physical products directly. Product payments are Cash on Delivery.
+            ShopoApp provides software and digital services for retail businesses. We do not sell physical products directly.
           </p>
         </div>
       </div>

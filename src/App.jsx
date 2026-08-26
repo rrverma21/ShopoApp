@@ -39,10 +39,6 @@ const LoginPage = lazy(() => import('@/pages/LoginPage'));
 const SignupPage = lazy(() => import('@/pages/SignupPage'));
 const ForgotPasswordPage = lazy(() => import('@/pages/ForgotPasswordPage'));
 const ResetPasswordPage = lazy(() => import('@/pages/ResetPasswordPage'));
-const ProductsPage = lazy(() => import('@/pages/ProductsPage'));
-const ProductDetailsPage = lazy(() => import('@/pages/ProductDetailsPage'));
-const CartPage = lazy(() => import('@/pages/CartPage'));
-const OrdersPage = lazy(() => import('@/pages/OrdersPage'));
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
 const AdminDashboard = lazy(() => import('@/pages/AdminDashboard'));
 const SellerSignupPage = lazy(() => import('@/pages/SellerSignupPage'));
@@ -64,7 +60,6 @@ const NotFoundPage = lazy(() => import('@/pages/NotFoundPage'));
 const FAQ = lazy(() => import('@/pages/FAQ'));
 const VerifyOtpPage = lazy(() => import('@/pages/VerifyOtpPage'));
 const VerifiedPage = lazy(() => import('@/pages/VerifiedPage')); 
-const BulkOrderPage = lazy(() => import('@/pages/BulkOrderPage'));
 const LocalShopsPage = lazy(() => import('@/pages/LocalShopsPage'));
 const MyPosOrdersPage = lazy(() => import('@/pages/MyPosOrdersPage'));
 const CustomerPurchaseHistory = lazy(() => import('@/pages/CustomerPurchaseHistory'));
@@ -260,9 +255,6 @@ const AppRoutes = () => {
                     <Route path="/features/smart-reordering" element={<RouteSEO title="Smart Re-ordering"><MainLayout><SmartReorderingPage /></MainLayout></RouteSEO>} />
                     
                     <Route path="/rider-signup" element={<Navigate to="/" replace />} />
-                    <Route path="/products" element={<RouteSEO title="Wholesale Market"><MainLayout><ProductsPage /></MainLayout></RouteSEO>} />
-                    <Route path="/product/:id" element={<RouteSEO title="Product Details"><MainLayout><ProductDetailsPage /></MainLayout></RouteSEO>} />
-                    
                     <Route path="/local-shops" element={<RouteSEO title="ShopoApp | Smart POS Billing, Inventory & Taxation Software"><MainLayout><LocalShopsPage /></MainLayout></RouteSEO>} />
                     
                     <Route path="/water-order" element={<RouteSEO title="ShopoApp | Smart POS Billing, Inventory & Taxation Software"><MainLayout><WaterOrderPage /></MainLayout></RouteSEO>} />
@@ -412,9 +404,6 @@ const AppRoutes = () => {
                     <Route path="/customer/dashboard" element={<MainLayout><ProtectedRoute><CustomerDashboard /></ProtectedRoute></MainLayout>} />
 
                     {/* Protected Routes */}
-                    <Route path="/cart" element={<MainLayout><ProtectedRoute><CartPage /></ProtectedRoute></MainLayout>} />
-                    <Route path="/orders" element={<MainLayout><ProtectedRoute><OrdersPage /></ProtectedRoute></MainLayout>} />
-                    <Route path="/my-orders" element={<MainLayout><ProtectedRoute><OrdersPage /></ProtectedRoute></MainLayout>} />
                     <Route path="/order-history" element={<MainLayout><ProtectedRoute><OrderHistory /></ProtectedRoute></MainLayout>} />
                     <Route path="/my-shop-orders" element={<MainLayout><ProtectedRoute><MyPosOrdersPage /></ProtectedRoute></MainLayout>} />
                     <Route path="/my-pos-orders" element={<MainLayout><ProtectedRoute><MyPosOrdersPage /></ProtectedRoute></MainLayout>} />
@@ -422,7 +411,6 @@ const AppRoutes = () => {
                     <Route path="/membership" element={<MainLayout><ProtectedRoute><MembershipPage /></ProtectedRoute></MainLayout>} />
                     <Route path="/membership-plans" element={<MainLayout><ProtectedRoute><MembershipPlansPage /></ProtectedRoute></MainLayout>} />
                     <Route path="/payment-cancelled" element={<MainLayout><ProtectedRoute><PaymentCancelledPage /></ProtectedRoute></MainLayout>} />
-                    <Route path="/bulk-order" element={<RouteSEO title="Bulk Order"><MainLayout><ProtectedRoute><BulkOrderPage /></ProtectedRoute></MainLayout></RouteSEO>} />
                     <Route path="/referral-dashboard" element={<RouteSEO title="Referrals"><MainLayout><ProtectedRoute><ReferralDashboard /></ProtectedRoute></MainLayout></RouteSEO>} />
                     
                     <Route path="/dashboard" element={<ProtectedRoute><Navigate to={getDashboardPath()} replace /></ProtectedRoute>} />

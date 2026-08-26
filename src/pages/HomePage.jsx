@@ -2,7 +2,7 @@ import React, { memo, useMemo, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Helmet } from 'react-helmet-async';
-import { ArrowRight, ShieldCheck, ShoppingCart, Store, MapPin, CheckCircle, Database, Smartphone, CreditCard, Truck, Users, LayoutGrid, Crown, Zap, AlertCircle, RefreshCw, Lock, Headphones as HeadphonesIcon, TrendingUp } from 'lucide-react';
+import { ArrowRight, ShieldCheck, Store, CheckCircle, Database, Smartphone, CreditCard, Crown, Zap, AlertCircle, RefreshCw, Lock, Headphones as HeadphonesIcon, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { GradientButton } from '@/components/ui/button-gradient';
 import { Card, CardContent } from '@/components/ui/card';
@@ -200,30 +200,30 @@ const HomePageContent = () => {
                 className="max-w-5xl mx-auto"
               >
                  <Badge className="bg-[#003D82]/30 text-blue-200 border-[#FF6B35]/30 backdrop-blur-sm mb-6 px-4 py-1.5 text-sm uppercase tracking-wider">
-                    Trusted B2B Platform for Indian Retail
+                    Smart Business Software for Indian Retail
                  </Badge>
                  
                  <h1 className="text-5xl md:text-7xl font-extrabold mb-6 tracking-tight leading-tight">
-                    Connecting <span className="gradient-text">Wholesalers & Retailers</span>
+                    POS Billing, Inventory & <span className="gradient-text">Digital Shop</span>
                  </h1>
                  
                  <p className="text-xl md:text-2xl text-slate-300 mb-4 max-w-3xl mx-auto font-light">
-                    Built for modern retailers - A B2B platform connecting businesses with enterprise-grade security and reliable support.
+                    Built for modern retailers and wholesalers with practical tools for billing, stock, customers, and online selling.
                  </p>
                  
                  <p className="text-lg text-slate-400 mb-10 max-w-2xl mx-auto">
-                    Product payments are <strong>Cash on Delivery</strong>. We provide powerful POS tools and membership subscriptions to empower your business.
+                    Run daily operations from one secure platform and give local customers a simple way to shop from your digital storefront.
                  </p>
                  
                  <div className="flex flex-col sm:flex-row justify-center items-center gap-4 mb-4">
-                    <Link to="/become-supplier">
+                    <Link to="/signup">
                         <GradientButton size="lg" variant="primary" className="w-full sm:w-auto text-lg h-14">
-                            Become a Wholesaler
+                            Get Started
                         </GradientButton>
                     </Link>
                     <Link to="/retailer-tools">
                         <GradientButton size="lg" variant="secondary" className="w-full sm:w-auto text-lg h-14 bg-slate-900/50 backdrop-blur-md border-[#FF6B35]">
-                            Become a Retailer
+                            Explore Retailer Tools
                         </GradientButton>
                     </Link>
                  </div>
@@ -238,7 +238,7 @@ const HomePageContent = () => {
 
                  <div className="flex flex-wrap justify-center gap-6 text-sm text-slate-400">
                     <div className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-green-400" /> Enterprise Security</div>
-                    <div className="flex items-center gap-2"><CreditCard className="w-4 h-4 text-[#FF6B35]" /> Cash on Delivery</div>
+                    <div className="flex items-center gap-2"><CreditCard className="w-4 h-4 text-[#FF6B35]" /> Flexible Billing</div>
                     <div className="flex items-center gap-2"><HeadphonesIcon className="w-4 h-4 text-blue-400" /> 24/7 Support</div>
                     <div className="flex items-center gap-2"><Lock className="w-4 h-4 text-green-400" /> Compliant & Secure</div>
                  </div>
@@ -250,27 +250,27 @@ const HomePageContent = () => {
             <div className="container mx-auto px-4">
                 <div className="text-center mb-16">
                     <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-4">How ShopoApp Works</h2>
-                    <p className="text-slate-600 dark:text-slate-300 max-w-2xl mx-auto">A transparent ecosystem for seamless business transactions.</p>
+                    <p className="text-slate-600 dark:text-slate-300 max-w-2xl mx-auto">Practical tools that support everyday retail operations.</p>
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-8">
                     {[
                         { 
-                            icon: Store, 
-                            title: "1. Wholesalers List Products", 
-                            desc: "Verified suppliers list their inventory on the marketplace for retailers to discover.",
+                            icon: Database,
+                            title: "1. Organize Your Inventory",
+                            desc: "Maintain product and stock information for accurate day-to-day operations.",
                             color: "bg-blue-50 dark:bg-blue-900/20 text-[#003D82] dark:text-blue-300"
                         },
                         { 
-                            icon: ShoppingCart, 
-                            title: "2. Retailers Place Requests", 
-                            desc: "Retailers browse and send order requests. No upfront payment required.",
+                            icon: Smartphone,
+                            title: "2. Bill Customers Efficiently",
+                            desc: "Use ShopoApp POS tools to create sales and digital receipts.",
                             color: "bg-orange-50 dark:bg-orange-900/20 text-[#FF6B35] dark:text-orange-300"
                         },
                         { 
-                            icon: Truck, 
-                            title: "3. COD Delivery", 
-                            desc: "Wholesalers fulfill orders and collect payment via Cash on Delivery upon successful handover.",
+                            icon: Store,
+                            title: "3. Share Your Digital Shop",
+                            desc: "Let local customers browse your visible products and place Digital Shop orders.",
                             color: "bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-300"
                         }
                     ].map((step, idx) => (
@@ -287,7 +287,7 @@ const HomePageContent = () => {
                         <Badge className="bg-[#003D82]/30 text-blue-200 border-[#FF6B35]/30 mb-6">Platform Features</Badge>
                         <h2 className="text-4xl font-bold mb-6">Tools to Power Your Commerce</h2>
                         <p className="text-slate-400 mb-8 text-lg">
-                            Beyond a marketplace, we provide essential software infrastructure for modern B2B businesses.
+                            ShopoApp provides essential software infrastructure for modern retail businesses.
                         </p>
                         
                         <div className="space-y-6">
@@ -295,7 +295,7 @@ const HomePageContent = () => {
                                 { title: "POS Billing System", desc: "Manage in-store sales with our advanced Point of Sale software.", icon: Smartphone },
                                 { title: "Inventory Management", desc: "Real-time stock tracking across multiple locations.", icon: Database },
                                 { title: "Online Shop for Retailers", desc: "Get your own digital storefront to sell to local customers.", icon: Store },
-                                { title: "COD-Based Sales", desc: "Secure, trust-based transactions with Cash on Delivery model.", icon: CreditCard }
+                                { title: "Customer Management", desc: "Keep customer, credit, and transaction information organized.", icon: CreditCard }
                             ].map((feature, idx) => (
                                 <FeatureRow key={`feature-${idx}`} {...feature} />
                             ))}
@@ -409,9 +409,9 @@ const HomePageContent = () => {
                     Join thousands of successful retailers powering their retail businesses with ShopoApp.
                 </p>
                 <div className="flex flex-col sm:flex-row justify-center gap-6 mb-12">
-                    <Link to="/become-supplier">
+                    <Link to="/signup">
                         <GradientButton size="lg" variant="primary" className="w-full sm:w-auto px-8 h-14">
-                            Join as Wholesaler
+                            Get Started
                         </GradientButton>
                     </Link>
                     <Link to="/signup">

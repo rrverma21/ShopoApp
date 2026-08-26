@@ -36,7 +36,7 @@ const ContactPage = () => {
             Get in Touch
           </motion.h1>
           <p className="text-slate-300 text-lg max-w-2xl mx-auto">
-            Have questions about our B2B marketplace or retail tools? We're here to help.
+            Have questions about ShopoApp or its retail tools? We're here to help.
           </p>
         </div>
       </div>
@@ -53,7 +53,7 @@ const ContactPage = () => {
                   <div>
                     <h3 className="font-bold text-slate-800 text-lg mb-1">Registered Entity</h3>
                     <p className="text-slate-600 font-medium">Zyvora Technologies Pvt. Ltd.</p>
-                    <p className="text-slate-500 text-sm mt-1">Official B2B Marketplace Platform</p>
+                    <p className="text-slate-500 text-sm mt-1">Retail Business Software Platform</p>
                   </div>
                 </div>
               </CardContent>

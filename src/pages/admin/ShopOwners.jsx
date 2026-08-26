@@ -141,12 +141,10 @@ const ShopOwners = () => {
             // Fetch Usage Metrics in Parallel
             const [
                 { count: posProductsCount },
-                { count: digitalProductsCount },
                 { count: posUsersCount },
                 { count: employeesCount }
             ] = await Promise.all([
                 supabase.from('point_of_sale_products').select('*', { count: 'exact', head: true }).eq('user_id', owner.id),
-                supabase.from('products').select('*', { count: 'exact', head: true }).eq('seller_id', owner.id).eq('is_disabled', false),
                 supabase.from('team_members').select('*', { count: 'exact', head: true }).eq('admin_id', owner.id).eq('status', 'active'),
                 supabase.from('employees').select('*', { count: 'exact', head: true }).eq('user_id', owner.id)
             ]);
@@ -157,7 +155,6 @@ const ShopOwners = () => {
                 plan: planData,
                 usage: {
                     posProducts: posProductsCount || 0,
-                    digitalProducts: digitalProductsCount || 0,
                     posUsers: posUsersCount || 0,
                     employees: employeesCount || 0
                 }
@@ -718,12 +715,6 @@ const ShopOwners = () => {
                                             Store,
                                             selectedOwner?.usage?.posProducts || 0,
                                             selectedOwner?.plan?.max_products
-                                        )}
-                                        {renderUsageCard(
-                                            "Digital Products Usage",
-                                            Database,
-                                            selectedOwner?.usage?.digitalProducts || 0,
-                                            selectedOwner?.plan?.max_digital_products
                                         )}
                                         {renderUsageCard(
                                             "POS Users Usage",

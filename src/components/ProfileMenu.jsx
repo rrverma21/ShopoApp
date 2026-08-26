@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { LayoutDashboard, User as UserIcon, ShoppingBag, LogOut, Crown, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, User as UserIcon, History, LogOut, Crown, RefreshCw } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -112,12 +112,12 @@ const ProfileMenu = ({ user, membership, onSignOut, isSigningOut, profileError, 
           </DropdownMenuItem>
 
           <DropdownMenuItem 
-            onClick={() => navigate('/orders')} 
+            onClick={() => navigate('/customer-purchase-history')}
             disabled={!!profileError || isSigningOut} 
             className="px-3 py-2.5 rounded-lg focus:bg-[#1E293B] focus:text-white cursor-pointer transition-colors"
           >
-            <ShoppingBag className="mr-3 h-[18px] w-[18px] text-slate-400" />
-            <span className="font-medium text-[14px]">My Orders</span>
+            <History className="mr-3 h-[18px] w-[18px] text-slate-400" />
+            <span className="font-medium text-[14px]">Customer Portal</span>
           </DropdownMenuItem>
         </div>
 

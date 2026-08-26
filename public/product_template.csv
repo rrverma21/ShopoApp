@@ -1,2 +1,0 @@
-name,description,stock,min_order_quantity,unit,categoryName,brandName,price,mrp,barcodes
-Sample Product,"A great sample product",100,1,pcs,Sample Category,Sample Brand,10.00,15.00,"123456789;987654321"

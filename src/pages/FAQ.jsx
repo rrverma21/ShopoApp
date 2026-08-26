@@ -18,11 +18,11 @@ const faqs = [
     questions: [
       {
         q: "What is ShopoApp?",
-        a: "ShopoApp is a B2B marketplace platform operated by Ninety Layers Enterprises. We connect wholesalers with retailers and provide professional software tools like POS and Inventory Management to help businesses scale."
+        a: "ShopoApp is a retail business software platform with tools for POS billing, inventory management, customer records, reporting, and Digital Shop."
       },
       {
         q: "Does ShopoApp sell products directly?",
-        a: "No. ShopoApp is a facilitator. We provide the digital platform for wholesalers to list products and retailers to discover them. The physical product transactions happen between the users."
+        a: "No. ShopoApp provides business software and digital services; it does not sell or own physical inventory."
       }
     ]
   },
@@ -31,12 +31,12 @@ const faqs = [
     icon: Store,
     questions: [
       {
-        q: "How do I become a wholesaler?",
-        a: "You can sign up via the 'Become a Wholesaler' section. You'll need to provide your business details and GSTIN. Once verified, you can start listing your products."
+        q: "How do I get started as a wholesaler?",
+        a: "Create a business account and provide the requested business details. Available POS and Book Orders features depend on your account and membership access."
       },
       {
-        q: "How do I receive payments?",
-        a: "Payments for product orders are handled via Cash on Delivery (COD). You collect the payment directly from the retailer upon delivery."
+        q: "Which business tools can wholesalers use?",
+        a: "Eligible businesses can use ShopoApp's POS, inventory, customer management, reporting, and Book Orders tools."
       }
     ]
   },
@@ -55,16 +55,16 @@ const faqs = [
     ]
   },
   {
-    category: "Orders & Payments",
+    category: "Software & Payments",
     icon: CreditCard,
     questions: [
       {
-        q: "What is the payment model for B2B orders?",
-        a: "We strictly follow a Cash on Delivery (COD) model for marketplace transactions to ensure trust and transparency between parties."
+        q: "How are Digital Shop orders managed?",
+        a: "Digital Shop orders are managed by the retailer through their ShopoApp order tools and store settings."
       },
       {
         q: "What are membership fees for?",
-        a: "Membership fees cover the cost of the software tools (POS, Inventory, CRM) and the maintenance of the marketplace platform. We do not take commissions on your product sales."
+        a: "Membership fees cover access to eligible ShopoApp software tools and platform services."
       }
     ]
   }
@@ -75,7 +75,7 @@ const FAQ = () => {
     <div className="bg-slate-50 min-h-screen">
       <Helmet>
         <title>ShopoApp | Smart POS Billing, Inventory & Taxation Software</title>
-        <meta name="description" content="Find answers to frequently asked questions about ShopoApp, POS billing, inventory management, and B2B marketplace features." />
+        <meta name="description" content="Find answers to frequently asked questions about ShopoApp, POS billing, inventory management, and Digital Shop features." />
       </Helmet>
 
       <div className="bg-[#003D82] text-white py-20">
