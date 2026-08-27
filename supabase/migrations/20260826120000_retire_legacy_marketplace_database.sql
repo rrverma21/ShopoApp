@@ -93,6 +93,21 @@ DROP FUNCTION IF EXISTS public.get_unsettled_orders_for_payout();
 DROP FUNCTION IF EXISTS public.search_products(text, uuid[], uuid[]);
 DROP FUNCTION IF EXISTS public.ship_order_and_update_stock(uuid);
 
+-- Retire policies on retained receipt/storage tables whose expressions depend
+-- on the retiring Marketplace orders table. The tables, columns, bucket, and
+-- existing storage objects remain unchanged.
+DROP POLICY IF EXISTS
+"Clients can upload receipts for their orders"
+ON public.order_payment_receipts;
+
+DROP POLICY IF EXISTS
+"Sellers can manage receipts for their orders"
+ON public.order_payment_receipts;
+
+DROP POLICY IF EXISTS
+"Allow sellers to view receipts for their orders"
+ON storage.objects;
+
 -- Retain these tables and identifier columns; remove only FKs to retiring
 -- Marketplace parent tables. Production referencing-row counts are zero.
 ALTER TABLE public.notifications
