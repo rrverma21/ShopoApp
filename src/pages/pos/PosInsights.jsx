@@ -1,31 +1,68 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/supabaseClient';
-import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';
+import { eachMonthOfInterval, endOfMonth, endOfYear, format, startOfMonth, startOfYear, subMonths, subYears } from 'date-fns';
 import { 
   TrendingUp, 
-  ShoppingCart, 
   Users, 
   Package, 
-  Wallet, 
-  Truck,
-  Eye,
+  Wallet,
+  CalendarDays,
   Banknote,
-  ClipboardList
+  ClipboardList,
+  Plus
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 import MetricCard from '@/components/pos/insights/MetricCard';
 import SalesChart from '@/components/pos/insights/SalesChart';
+import InventoryOverview from '@/components/pos/insights/InventoryOverview';
+import PaymentsPurchasesOverview from '@/components/pos/insights/PaymentsPurchasesOverview';
+import DeliveryOverview from '@/components/pos/insights/DeliveryOverview';
 import ReportsSection from '@/components/pos/insights/ReportsSection';
 import TodoListWidget from '@/components/pos/insights/TodoListWidget';
+import RecentSales from '@/components/pos/insights/RecentSales';
+import OnlineOrders from '@/components/pos/insights/OnlineOrders';
+import StockAttention from '@/components/pos/insights/StockAttention';
+import PendingPayments from '@/components/pos/insights/PendingPayments';
 import { useToast } from '@/components/ui/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { usePosData } from '@/contexts/PosDataContext';
+
+const dateRangePresets = [
+  ['this_month', 'This Month'],
+  ['last_month', 'Last Month'],
+  ['last_3_months', 'Last 3 Months'],
+  ['last_6_months', 'Last 6 Months'],
+  ['this_year', 'This Year'],
+  ['last_year', 'Last Year'],
+];
+
+const getPresetDateRange = preset => {
+  const now = new Date();
+  now.setHours(23, 59, 59, 999);
+
+  if (preset === 'this_month') return { startDate: startOfMonth(now), endDate: now };
+  if (preset === 'last_month') {
+    const lastMonth = subMonths(now, 1);
+    return { startDate: startOfMonth(lastMonth), endDate: endOfMonth(lastMonth) };
+  }
+  if (preset === 'last_6_months') return { startDate: startOfMonth(subMonths(now, 5)), endDate: now };
+  if (preset === 'this_year') return { startDate: startOfYear(now), endDate: now };
+  if (preset === 'last_year') {
+    const lastYear = subYears(now, 1);
+    return { startDate: startOfYear(lastYear), endDate: endOfYear(lastYear) };
+  }
+  return { startDate: startOfMonth(subMonths(now, 2)), endDate: now };
+};
 
 const PosInsights = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { businessId, hasPermission } = usePosData();
   const [loading, setLoading] = useState(true);
+  const [dateRangePreset, setDateRangePreset] = useState('last_3_months');
   const [dateRangeLabel, setDateRangeLabel] = useState('');
   
   // Dashboard Metrics State
@@ -34,50 +71,156 @@ const PosInsights = () => {
     revenue: { total: 0 },
     orders: { total: 0, aov: 0 },
     customers: { total: 0 }, // Active customers in period
-    inventory: { totalValue: 0, totalVolume: 0 }, // Snapshot
+    inventory: { totalValue: 0, totalVolume: 0, totalProducts: 0, inStockProducts: 0, outOfStockProducts: 0 }, // Snapshot
     payment: { total: 0, pending: 0 }, // Filtered by date
     purchase: { total: 0 } // Filtered by date
   });
 
   // Chart Data State
   const [chartData, setChartData] = useState([]);
+  const [recentSales, setRecentSales] = useState([]);
+  const [onlineOrders, setOnlineOrders] = useState([]);
+  const [onlineOrdersLoading, setOnlineOrdersLoading] = useState(true);
+  const [onlineOrdersError, setOnlineOrdersError] = useState(false);
+  const [stockAttention, setStockAttention] = useState({ lowStockCount: 0, outOfStockCount: 0, products: [] });
+  const [stockAttentionError, setStockAttentionError] = useState(false);
+  const [pendingPayments, setPendingPayments] = useState({ total: 0, customerCount: 0, entries: [] });
+  const [pendingPaymentsLoading, setPendingPaymentsLoading] = useState(true);
+  const [pendingPaymentsError, setPendingPaymentsError] = useState(false);
+
+  const fetchPendingPayments = useCallback(async () => {
+    if (!user) return;
+    setPendingPaymentsLoading(true);
+    setPendingPaymentsError(false);
+
+    try {
+      const creditSales = [];
+      const pageSize = 1000;
+      let page = 0;
+
+      while (true) {
+        const pageStart = page * pageSize;
+        const { data, error } = await supabase
+          .from('point_of_sale_sales')
+          .select(`
+            id,
+            invoice_number,
+            bill_number,
+            balance_due,
+            created_at,
+            customer_id,
+            customer:point_of_sale_customers(id, name)
+          `)
+          .eq('user_id', user.id)
+          .eq('payment_method', 'Credit')
+          .gt('balance_due', 0.50)
+          .neq('payment_status', 'Paid')
+          .order('balance_due', { ascending: false })
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: true })
+          .range(pageStart, pageStart + pageSize - 1);
+
+        if (error) throw error;
+        creditSales.push(...(data || []));
+        if (!data || data.length < pageSize) break;
+        page += 1;
+      }
+
+      const total = creditSales.reduce((sum, sale) => sum + (Number(sale.balance_due) || 0), 0);
+      const customerCount = new Set(creditSales.map(sale => sale.customer_id).filter(Boolean)).size;
+      setPendingPayments({ total, customerCount, entries: creditSales.slice(0, 5) });
+    } catch (error) {
+      console.error('Pending payments widget fetch error:', error);
+      setPendingPayments({ total: 0, customerCount: 0, entries: [] });
+      setPendingPaymentsError(true);
+    } finally {
+      setPendingPaymentsLoading(false);
+    }
+  }, [user]);
+
+  const fetchOnlineOrders = useCallback(async () => {
+    if (!businessId || !hasPermission('orders')) {
+      setOnlineOrders([]);
+      setOnlineOrdersLoading(false);
+      return;
+    }
+
+    setOnlineOrdersLoading(true);
+    setOnlineOrdersError(false);
+
+    try {
+      const { startDate, endDate } = getPresetDateRange(dateRangePreset);
+      const { data, error } = await supabase
+        .from('digital_shop_orders')
+        .select('id, total_amount, status, created_at')
+        .eq('retailer_id', businessId)
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (error) throw error;
+      setOnlineOrders(data || []);
+    } catch (error) {
+      console.error('Online orders widget fetch error:', error);
+      setOnlineOrders([]);
+      setOnlineOrdersError(true);
+    } finally {
+      setOnlineOrdersLoading(false);
+    }
+  }, [businessId, dateRangePreset, hasPermission]);
 
   // Fetch Logic
   const fetchDashboardData = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     try {
-      // Task 1: Fix POS Insights date range calculation
-      const endDate = new Date();
-      endDate.setHours(23, 59, 59, 999);
-      
-      const startDate = new Date(endDate);
-      startDate.setMonth(startDate.getMonth() - 3);
-      startDate.setHours(0, 0, 0, 0);
+      const { startDate, endDate } = getPresetDateRange(dateRangePreset);
 
       // Task 8: Add date range display
-      setDateRangeLabel(`${format(startDate, 'MM/dd/yyyy')} to ${format(endDate, 'MM/dd/yyyy')}`);
+      setDateRangeLabel(`${format(startDate, 'dd MMM yyyy')} – ${format(endDate, 'dd MMM yyyy')}`);
 
       const startDateISO = startDate.toISOString();
       const endDateISO = endDate.toISOString();
 
       // Task 7: Update all data fetching queries to use corrected date range
       // 1. Fetch Sales Data
-      const { data: salesData, error: salesError } = await supabase
-        .from('point_of_sale_sales')
-        .select(`
-          total_amount, 
-          discount_amount,
-          customer_id,
-          created_at,
-          subtotal,
-          tax_amount
-        `)
-        .eq('user_id', user.id)
-        .gte('created_at', startDateISO)
-        .lte('created_at', endDateISO);
+      // Supabase projects commonly cap a single response at 1,000 rows. Fetch
+      // the selected period in deterministic pages so every order contributes
+      // to the existing dashboard metrics and chart calculations.
+      const salesData = [];
+      const salesPageSize = 1000;
+      let salesPage = 0;
 
-      if (salesError) throw salesError;
+      while (true) {
+        const pageStart = salesPage * salesPageSize;
+        const { data: salesPageData, error: salesError } = await supabase
+          .from('point_of_sale_sales')
+          .select(`
+            id,
+            total_amount,
+            discount_amount,
+            customer_id,
+            created_at,
+            subtotal,
+            tax_amount,
+            invoice_number,
+            bill_number,
+            payment_method
+          `)
+          .eq('user_id', user.id)
+          .gte('created_at', startDateISO)
+          .lte('created_at', endDateISO)
+          .order('created_at', { ascending: true })
+          .order('id', { ascending: true })
+          .range(pageStart, pageStart + salesPageSize - 1);
+
+        if (salesError) throw salesError;
+
+        salesData.push(...(salesPageData || []));
+        if (!salesPageData || salesPageData.length < salesPageSize) break;
+        salesPage += 1;
+      }
 
       // Task 2: Fix Total Sales calculation (Sum of total_amount)
       const totalSales = salesData.reduce((sum, sale) => sum + (sale.total_amount || 0), 0);
@@ -118,14 +261,35 @@ const PosInsights = () => {
       // Note: Inventory is typically a current state metric, not range-based unless using logs. Keeping as snapshot.
       const { data: inventoryData, error: invError } = await supabase
         .from('point_of_sale_products')
-        .select('stock_level, cost_price')
+        .select('id, name, stock_level, low_stock_threshold, is_service, cost_price')
         .eq('user_id', user.id)
         .eq('archived', false);
 
-      if (invError) throw invError;
+      if (invError) {
+        setStockAttentionError(true);
+        throw invError;
+      }
+      setStockAttentionError(false);
 
       const totalInventoryValue = inventoryData.reduce((sum, item) => sum + ((item.stock_level || 0) * (item.cost_price || 0)), 0);
       const totalInventoryVolume = inventoryData.reduce((sum, item) => sum + (item.stock_level || 0), 0);
+      const totalInventoryProducts = inventoryData.length;
+      const inStockProducts = inventoryData.filter(item => Number(item.stock_level || 0) > 0).length;
+      const outOfStockProducts = totalInventoryProducts - inStockProducts;
+      const outOfStockItems = inventoryData
+        .filter(item => Number(item.stock_level || 0) <= 0)
+        .sort((a, b) => Number(a.stock_level || 0) - Number(b.stock_level || 0) || String(a.name || '').localeCompare(String(b.name || '')));
+      const lowStockItems = inventoryData
+        .filter(item => !item.is_service
+          && Number(item.stock_level || 0) > 0
+          && Number(item.stock_level || 0) <= Number(item.low_stock_threshold || 0))
+        .sort((a, b) => Number(a.stock_level || 0) - Number(b.stock_level || 0) || String(a.name || '').localeCompare(String(b.name || '')));
+
+      setStockAttention({
+        lowStockCount: lowStockItems.length,
+        outOfStockCount: outOfStockProducts,
+        products: [...outOfStockItems, ...lowStockItems].slice(0, 5)
+      });
 
       // 4. Fetch Credit Payments Received (Filtered by date)
       const { data: paymentsData, error: payError } = await supabase
@@ -139,30 +303,20 @@ const PosInsights = () => {
 
       const totalPaymentsReceived = paymentsData.reduce((sum, p) => sum + (p.amount || 0), 0);
       
-      // Calculate pending payments (Total Sales Balance Due - Snapshot or Range?)
-      // Usually "Sundry Debtors" is a snapshot of all time outstanding.
-      // But let's calculate pending for *this period's sales* as per filter logic requested?
-      // Actually, Pending Payments is usually a current liability metric. 
-      // Let's grab total pending from sales in this period for consistency with "Last 3 Months".
-      const totalPendingInPeriod = salesData.reduce((sum, sale) => sum + (sale.balance_due || 0), 0); // Assuming balance_due is on sale record
-
       // Update Metrics State
       setMetrics({
         sales: { total: totalSales },
         revenue: { total: totalRevenue },
         orders: { total: totalOrders, aov: averageOrderValue },
         customers: { total: totalActiveCustomers },
-        inventory: { totalValue: totalInventoryValue, totalVolume: totalInventoryVolume },
-        payment: { total: totalPaymentsReceived, pending: totalPendingInPeriod },
+        inventory: { totalValue: totalInventoryValue, totalVolume: totalInventoryVolume, totalProducts: totalInventoryProducts, inStockProducts, outOfStockProducts },
+        payment: { total: totalPaymentsReceived, pending: 0 },
         purchase: { total: totalPurchases }
       });
 
-      // 5. Process Chart Data (Last 3 months) - Using data already fetched
-      const months = [];
-      const currentMonthDate = new Date(); 
-      for (let i = 2; i >= 0; i--) { 
-        months.push(subMonths(currentMonthDate, i));
-      }
+      // 5. Process monthly chart data for the selected preset using the sales
+      // records already fetched above.
+      const months = eachMonthOfInterval({ start: startDate, end: endDate });
 
       const chartDataPoints = months.map(date => {
         const monthStart = startOfMonth(date);
@@ -189,9 +343,11 @@ const PosInsights = () => {
       });
 
       setChartData(chartDataPoints);
+      setRecentSales(salesData.slice(-5).reverse());
 
     } catch (error) {
       console.error("Dashboard data fetch error:", error);
+      setRecentSales([]);
       toast({
         title: "Error loading insights",
         description: "Some data could not be retrieved.",
@@ -200,41 +356,77 @@ const PosInsights = () => {
     } finally {
       setLoading(false);
     }
-  }, [user, toast]);
+  }, [user, toast, dateRangePreset]);
 
   useEffect(() => {
     fetchDashboardData();
   }, [fetchDashboardData]);
 
+  useEffect(() => {
+    fetchOnlineOrders();
+  }, [fetchOnlineOrders]);
+
+  useEffect(() => {
+    fetchPendingPayments();
+  }, [fetchPendingPayments]);
+
+  const accountName = user?.user_metadata?.business_name
+    || user?.user_metadata?.full_name
+    || user?.user_metadata?.name
+    || user?.email?.split('@')[0]
+    || 'there';
+  const currentHour = new Date().getHours();
+  const greeting = currentHour < 12 ? 'Good Morning' : currentHour < 17 ? 'Good Afternoon' : 'Good Evening';
+
   return (
-    <div className="p-4 md:p-8 space-y-8 min-h-screen bg-slate-50/50">
+    <div className="min-h-screen bg-[#F6F8FC] px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7">
+      <div className="mx-auto max-w-[1600px] space-y-7 lg:space-y-8">
       
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex items-center gap-2">
-          <h1 className="text-3xl font-bold text-blue-900 tracking-tight">Insights</h1>
-          <Eye className="w-5 h-5 text-slate-400 mt-1" />
+      <header className="relative flex min-h-[112px] flex-col justify-center gap-5 overflow-hidden rounded-[20px] border border-slate-200/80 bg-gradient-to-br from-white via-white to-blue-50/60 px-5 py-5 shadow-[0_4px_18px_rgba(15,23,42,0.04)] sm:px-6 xl:flex-row xl:items-center xl:justify-between xl:py-4">
+        <div className="pointer-events-none absolute -right-10 -top-16 h-40 w-40 rounded-full bg-blue-100/50 blur-3xl" aria-hidden="true" />
+        <div className="min-w-0">
+          <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-blue-600">Business Overview</p>
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">{greeting}, {accountName}!</h1>
+          <p className="mt-1.5 text-sm text-slate-500">Here&apos;s what&apos;s happening with your business today.</p>
         </div>
-        {dateRangeLabel && (
-          <div className="bg-white px-4 py-1.5 rounded-full shadow-sm border border-slate-200 text-xs font-medium text-slate-600">
-            Last 3 Months: {dateRangeLabel}
-          </div>
-        )}
-      </div>
+        <div className="relative flex w-full flex-col gap-2.5 sm:w-auto sm:flex-row sm:items-center">
+          {dateRangeLabel && (
+            <div className="flex min-h-11 w-full items-center gap-2.5 rounded-xl border border-slate-200 bg-white px-3.5 py-2 shadow-sm transition-colors hover:border-blue-300 sm:w-[290px]" aria-label={`Dashboard period: ${dateRangeLabel}`}>
+              <CalendarDays className="h-4 w-4 shrink-0 text-blue-600" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <Select value={dateRangePreset} onValueChange={setDateRangePreset}>
+                  <SelectTrigger aria-label="Dashboard date range preset" className="h-5 border-0 bg-transparent p-0 text-xs font-bold text-slate-700 shadow-none hover:bg-transparent focus:ring-0 focus:ring-offset-0">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {dateRangePresets.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <p className="mt-0.5 truncate text-[10px] font-medium text-slate-400">{dateRangeLabel}</p>
+              </div>
+            </div>
+          )}
+          <button type="button" onClick={() => navigate('/pos/point-of-sale')} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2">
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            New Bill
+          </button>
+        </div>
+      </header>
 
       {/* Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         
         {/* Task 2: Total Sales */}
         <MetricCard 
           title="Total Sales" 
           icon={TrendingUp}
           loading={loading}
-          colorClass="bg-blue-50 border-blue-100"
+          accentClass="border-blue-200 bg-blue-50 text-blue-600"
           metrics={[
             { label: 'Total', value: metrics.sales.total, isCurrency: true }
           ]}
-          onClick={() => navigate('/pos/sales')}
+          onClick={() => navigate('/pos/reports')}
         />
 
         {/* Task 3: Total Revenue */}
@@ -242,7 +434,7 @@ const PosInsights = () => {
           title="Total Revenue" 
           icon={Banknote}
           loading={loading}
-          colorClass="bg-emerald-50 border-emerald-100"
+          accentClass="border-emerald-200 bg-emerald-50 text-emerald-600"
           metrics={[
             { label: 'Net Revenue', value: metrics.revenue.total, isCurrency: true }
           ]}
@@ -254,7 +446,8 @@ const PosInsights = () => {
           title="Orders" 
           icon={ClipboardList}
           loading={loading}
-          colorClass="bg-indigo-50 border-indigo-100"
+          accentClass="border-indigo-200 bg-indigo-50 text-indigo-600"
+          metricGridClass="grid-cols-[minmax(0,.7fr)_minmax(0,1.3fr)]"
           metrics={[
             { label: 'Total Orders', value: metrics.orders.total, isCurrency: false },
             { label: 'Avg Value', value: metrics.orders.aov, isCurrency: true }
@@ -267,95 +460,136 @@ const PosInsights = () => {
           title="Customers" 
           icon={Users}
           loading={loading}
-          colorClass="bg-purple-50 border-purple-100"
+          accentClass="border-violet-200 bg-violet-50 text-violet-600"
           metrics={[
             { label: 'Active', value: metrics.customers.total, isCurrency: false }
           ]}
           onClick={() => navigate('/pos/customers')}
         />
 
-        {/* Existing Inventory (Snapshot) */}
+        {/* Pending Payments (existing dashboard value) */}
         <MetricCard 
-          title="Inventory" 
+          title="Pending Payments"
+          icon={Wallet}
+          loading={pendingPaymentsLoading || pendingPaymentsError}
+          accentClass="border-amber-200 bg-amber-50 text-amber-600"
+          metrics={[
+            { label: 'Pending', value: pendingPayments.total, isCurrency: true }
+          ]}
+          onClick={() => navigate('/pos/credit')}
+        />
+
+        {/* Existing safe stock-attention count */}
+        <MetricCard 
+          title="Out of Stock"
           icon={Package}
           loading={loading}
-          colorClass="bg-orange-50 border-orange-100"
+          accentClass="border-red-200 bg-red-50 text-red-600"
           metrics={[
-            { label: 'Value', value: metrics.inventory.totalValue, isCurrency: true },
-            { label: 'Volume', value: metrics.inventory.totalVolume, isCurrency: false }
+            { label: 'Products', value: metrics.inventory.outOfStockProducts, isCurrency: false }
           ]}
           onClick={() => navigate('/pos/products')}
         />
 
-        {/* Existing Payments (Filtered) */}
-        <MetricCard 
-          title="Payments" 
-          icon={Wallet}
-          loading={loading}
-          colorClass="bg-pink-50 border-pink-100"
-          metrics={[
-            { label: 'Received', value: metrics.payment.total, isCurrency: true },
-            { label: 'Pending', value: metrics.payment.pending, isCurrency: true }
-          ]}
-          onClick={() => navigate('/pos/pending-payments')}
-        />
-
-        {/* Existing Purchase (Filtered) */}
-        <MetricCard 
-          title="Purchases" 
-          icon={ShoppingCart}
-          loading={loading}
-          colorClass="bg-yellow-50 border-yellow-100"
-          metrics={[
-            { label: 'Total', value: metrics.purchase.total, isCurrency: true }
-          ]}
-          onClick={() => navigate('/pos/reports')} 
-        />
-
-        {/* Delivery Link */}
-        <div 
-          onClick={() => navigate('/delivery/my-bookings')}
-          className="bg-white border border-slate-200 rounded-xl shadow-sm hover:shadow-md transition-all cursor-pointer p-6 flex flex-col items-center justify-center text-center gap-3 h-full min-h-[140px]"
-        >
-           <Truck className="w-8 h-8 text-slate-700" />
-           <div>
-             <h3 className="font-bold text-slate-800">Show Delivery Data</h3>
-             <p className="text-xs text-slate-500">Track shipments and riders</p>
-           </div>
-        </div>
-
       </div>
 
       {/* Main Content Area */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 items-start gap-7 xl:grid-cols-[minmax(0,1.85fr)_minmax(300px,.75fr)]">
         
         {/* Sales Chart - Takes up 2/3 width on large screens */}
-        <div className="lg:col-span-2 h-[450px]">
+        <div className="min-w-0">
           <SalesChart data={chartData} loading={loading} />
         </div>
 
-        {/* Sidebar - Delivery Link (Desktop) & Todo List */}
+        {/* Sidebar - Todo List */}
         <div className="space-y-6 flex flex-col">
-           {/* Desktop Delivery Link Card */}
-           <div 
-              onClick={() => navigate('/delivery/my-bookings')}
-              className="hidden xl:flex bg-white border border-orange-100 rounded-xl shadow-sm hover:shadow-lg transition-all cursor-pointer p-8 flex-col items-center justify-center text-center gap-4 h-[180px] group"
-            >
-              <h3 className="font-bold text-slate-800 text-lg">Show Delivery Data</h3>
-              <div className="bg-slate-100 p-3 rounded-full group-hover:bg-orange-50 transition-colors">
-                <Truck className="w-8 h-8 text-slate-700 group-hover:text-orange-600 transition-colors" />
-              </div>
-           </div>
-
-           <TodoListWidget />
+           <TodoListWidget
+             outOfStockCount={metrics.inventory.outOfStockProducts}
+             onNewBill={() => navigate('/pos/point-of-sale')}
+             onCustomers={() => navigate('/pos/customers')}
+             onProducts={() => navigate('/pos/products')}
+             onPurchases={() => navigate('/pos/purchase-bill-entry')}
+             onCredit={() => navigate('/pos/credit')}
+             onSmartReorder={() => navigate('/pos/smart-reorder')}
+           />
         </div>
       </div>
 
-      {/* Reports Section */}
-      <div className="pt-4">
+      <section aria-labelledby="operations-heading" className="space-y-4">
+        <div>
+          <h2 id="operations-heading" className="text-lg font-bold text-slate-900">Operations</h2>
+          <p className="mt-1 text-xs text-slate-500">What needs your attention right now.</p>
+        </div>
+        <div className="grid items-start gap-5 lg:grid-cols-2 2xl:grid-cols-4">
+          <StockAttention
+            attention={stockAttention}
+            loading={loading}
+            hasError={stockAttentionError}
+            onViewProducts={() => navigate('/pos/products')}
+            onSmartReorder={() => navigate('/pos/smart-reorder')}
+          />
+
+          <PendingPayments
+            data={pendingPayments}
+            loading={pendingPaymentsLoading}
+            hasError={pendingPaymentsError}
+            onViewCredit={() => navigate('/pos/credit')}
+          />
+
+          <RecentSales
+            sales={recentSales}
+            loading={loading}
+            onViewAll={() => navigate('/pos/reports')}
+            onNewBill={() => navigate('/pos/point-of-sale')}
+          />
+
+          <OnlineOrders
+            orders={onlineOrders}
+            loading={onlineOrdersLoading}
+            hasError={onlineOrdersError}
+            onViewAll={() => navigate('/pos/orders')}
+          />
+        </div>
+      </section>
+
+      <section aria-labelledby="business-overview-heading" className="space-y-4">
+        <div>
+          <h2 id="business-overview-heading" className="text-lg font-bold text-slate-900">Business Overview</h2>
+          <p className="mt-1 text-xs text-slate-500">Supporting inventory and finance context.</p>
+        </div>
+        <div className="grid items-start gap-5 xl:grid-cols-[1.08fr_.92fr]">
+          <InventoryOverview
+            inventory={metrics.inventory}
+            loading={loading}
+            onViewProducts={() => navigate('/pos/products')}
+            onOpenSmartReorder={() => navigate('/pos/smart-reorder')}
+          />
+
+          <PaymentsPurchasesOverview
+            payment={{ ...metrics.payment, pending: pendingPayments.total }}
+            purchase={metrics.purchase}
+            loading={loading}
+            pendingLoading={pendingPaymentsLoading}
+            pendingError={pendingPaymentsError}
+            onViewPending={() => navigate('/pos/credit')}
+            onViewCredit={() => navigate('/pos/credit')}
+            onViewPurchases={() => navigate('/pos/purchase-bill-entry')}
+          />
+        </div>
+      </section>
+
+      <div>
+        <DeliveryOverview
+          onViewDeliveries={() => navigate('/delivery/my-bookings')}
+          onBookDelivery={() => navigate('/delivery/book')}
+        />
+      </div>
+
+      <div>
         <ReportsSection />
       </div>
 
+      </div>
     </div>
   );
 };
