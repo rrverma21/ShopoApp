@@ -1,4 +1,5 @@
 import React, { useEffect, Suspense, lazy } from 'react';
+import { SellerProductAccessProvider } from '@/hooks/useSellerProductAccess';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { HelmetProvider } from 'react-helmet-async';
 import { AuthProvider, useAuth } from '@/contexts/SupabaseAuthContext';
@@ -107,6 +108,9 @@ const PerformanceRatings = lazy(() => import('@/pages/pos/PerformanceRatings'));
 const PosInsights = lazy(() => import('@/pages/pos/PosInsights'));
 const DigitalShop = lazy(() => import('@/pages/pos/DigitalShop'));
 const DigitalShopCheckout = lazy(() => import('@/pages/pos/DigitalShopCheckout'));
+const DigitalShopPlansPage = lazy(() => import('@/pages/digital-shop/DigitalShopPlansPage'));
+const DigitalShopCommercialCheckoutPage = lazy(() => import('@/pages/digital-shop/DigitalShopCommercialCheckoutPage'));
+const DigitalShopOrdersPage = lazy(() => import('@/pages/digital-shop/DigitalShopOrdersPage'));
 const WaterOrdersDashboard = lazy(() => import('@/pages/pos/WaterOrdersDashboard'));
 const InvoiceView = lazy(() => import('@/pages/pos/InvoiceView'));
 const PurchaseBillEntry = lazy(() => import('@/pages/pos/PurchaseBillEntry'));
@@ -288,6 +292,9 @@ const AppRoutes = () => {
                     {/* Digital Shop & Checkout Routes */}
                     <Route path="/shop/:retailerId" element={<RouteSEO title="Digital Shop"><DigitalShop /></RouteSEO>} />
                     <Route path="/shop/:retailerId/checkout" element={<DigitalShopCheckout />} />
+                    <Route path="/digital-shop/plans" element={<ProtectedRoute><SellerRoute><MainLayout><DigitalShopPlansPage /></MainLayout></SellerRoute></ProtectedRoute>} />
+                    <Route path="/digital-shop/commercial-checkout/:planId" element={<ProtectedRoute><SellerRoute><MainLayout><DigitalShopCommercialCheckoutPage /></MainLayout></SellerRoute></ProtectedRoute>} />
+                    <Route path="/digital-shop/orders" element={<ProtectedRoute><SellerRoute><MainLayout><DigitalShopOrdersPage /></MainLayout></SellerRoute></ProtectedRoute>} />
                     <Route path="/order-confirmation/:orderId" element={<OrderConfirmation />} />
                     <Route path="/order-confirmation" element={<OrderConfirmation />} />
                     <Route path="/order-tracking/:orderId" element={<OrderTracking />} />
@@ -477,7 +484,7 @@ function App() {
             <AuthProvider>
               <RegionProvider>
                 <QueryClientProvider client={queryClient}>
-                  <MembershipProvider>
+                  <SellerProductAccessProvider><MembershipProvider>
                     <POSModeProvider>
                         <PosDataProvider>
                         <CartProvider>
@@ -490,7 +497,7 @@ function App() {
                         </CartProvider>
                         </PosDataProvider>
                     </POSModeProvider>
-                  </MembershipProvider>
+                  </MembershipProvider></SellerProductAccessProvider>
                 </QueryClientProvider>
               </RegionProvider>
             </AuthProvider>
