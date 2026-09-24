@@ -147,10 +147,10 @@ const Sidebar = ({ className, onHelpClick }) => {
   };
 
   return (
-    <div className={cn("flex flex-col h-full bg-sidebar border-r border-border", className)}>
+    <div className={cn("flex flex-col h-full min-h-0 overflow-hidden bg-sidebar border-r border-border", className)}>
        <BusinessInfoHeader />
 
-       <nav className="px-3 py-4 space-y-1 flex-1 overflow-y-auto custom-scrollbar">
+       <nav className="px-3 py-4 space-y-1 min-h-0 flex-1 overflow-y-auto overscroll-contain custom-scrollbar">
           <NavLink to="/" className={navItemClass('/')} data-tour="home">
              <Home className="h-5 w-5 text-highlight group-hover:text-primary shrink-0" /> <span className="font-medium truncate">Home</span>
           </NavLink>
