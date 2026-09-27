@@ -9,6 +9,42 @@ import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
+function PostImage({ src, alt, className = '' }) {
+  return <img src={src} alt={alt} loading="lazy" className={`h-full w-full object-cover ${className}`} />;
+}
+
+function PostImageGallery({ images, authorName }) {
+  const galleryImages = Array.isArray(images) ? images.filter(image => typeof image === 'string' && image.trim()).slice(0, 5) : [];
+  if (!galleryImages.length) return null;
+  const alt = index => `Image ${index + 1} attached to ${authorName || 'this post'}`;
+
+  if (galleryImages.length === 1) return (
+    <div className="mb-3 aspect-[4/3] max-h-[420px] overflow-hidden rounded-xl border border-border bg-slate-100 dark:bg-slate-950 sm:mb-4">
+      <PostImage src={galleryImages[0]} alt={alt(0)} />
+    </div>
+  );
+  if (galleryImages.length === 3) return (
+    <div className="mb-3 grid h-72 grid-cols-2 gap-2 overflow-hidden rounded-xl sm:mb-4 sm:h-80">
+      <PostImage src={galleryImages[0]} alt={alt(0)} className="row-span-2 rounded-l-xl" />
+      <PostImage src={galleryImages[1]} alt={alt(1)} className="rounded-tr-xl" />
+      <PostImage src={galleryImages[2]} alt={alt(2)} className="rounded-br-xl" />
+    </div>
+  );
+  if (galleryImages.length === 5) return (
+    <div className="mb-3 grid h-72 grid-cols-2 gap-2 overflow-hidden rounded-xl sm:mb-4 sm:h-80">
+      <PostImage src={galleryImages[0]} alt={alt(0)} className="rounded-l-xl" />
+      <div className="grid grid-cols-2 gap-2">
+        {galleryImages.slice(1).map((image, index) => <PostImage key={image} src={image} alt={alt(index + 1)} className="rounded-lg" />)}
+      </div>
+    </div>
+  );
+  return (
+    <div className={`mb-3 grid gap-2 overflow-hidden rounded-xl sm:mb-4 ${galleryImages.length === 2 ? 'grid-cols-2 h-64 sm:h-80' : 'grid-cols-2 h-72 sm:h-80'}`}>
+      {galleryImages.map((image, index) => <PostImage key={image} src={image} alt={alt(index)} className="rounded-lg" />)}
+    </div>
+  );
+}
+
 export default function PostCard({ post }) {
   const { toast } = useToast();
   const [isLiked, setIsLiked] = useState(post.isLiked || false);
@@ -64,10 +100,12 @@ export default function PostCard({ post }) {
             <span className="text-xs text-muted-foreground">
               {formatDistanceToNow(new Date(post.createdAt), { addSuffix: true })}
             </span>
-            <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span>
-            <Badge variant="outline" className="text-[10px] px-1.5 py-0 uppercase tracking-wider font-semibold">
-              {post.postType}
-            </Badge>
+            {post.postType && <>
+              <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span>
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 uppercase tracking-wider font-semibold">
+                {post.postType}
+              </Badge>
+            </>}
           </div>
         </div>
       </CardHeader>
@@ -77,20 +115,11 @@ export default function PostCard({ post }) {
           {post.content}
         </p>
         
-        {post.images && post.images.length > 0 && (
-          <div className="rounded-xl overflow-hidden mb-4 border border-border">
-            <img 
-              src={post.images[0]} 
-              alt="Post attachment" 
-              className="w-full h-auto max-h-[400px] object-cover"
-              loading="lazy"
-            />
-          </div>
-        )}
+        <PostImageGallery images={post.images} authorName={post.userName} />
 
-        <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-none">
+        {post.category && <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-none">
           {post.category}
-        </Badge>
+        </Badge>}
       </CardContent>
 
       <CardFooter className="flex flex-col p-4 border-t border-border bg-slate-50/50 dark:bg-slate-900/50">

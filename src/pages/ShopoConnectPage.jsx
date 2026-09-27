@@ -13,6 +13,12 @@ import BusinessListingForm from '@/components/shopo-connect/BusinessListingForm'
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { Button } from '@/components/ui/button';
+import { normalizeProfileRole } from '@/lib/profileRoles';
+import {
+  cleanupAttemptMedia, createShopoConnectAttempt, finalizeShopoConnectAttempt,
+  isDefinitelyUnpublishedFinalizerFailure, mapCanonicalFeedMedia, selectPostImageUrls,
+  uploadAttemptMedia, validatePostContent, validateSelectedImages,
+} from '@/lib/shopoConnectMedia';
 import { useToast } from '@/components/ui/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -77,21 +83,34 @@ export default function ShopoConnectPage() {
   const [formError, setFormError] = useState('');
   
   const fileInputRef = useRef(null);
+  const activeAttemptRef = useRef(null);
+  const submissionInFlightRef = useRef(false);
+  const previewUrlsRef = useRef(new Set());
   const { user } = useAuth();
   const { toast } = useToast();
+  const normalizedRole = normalizeProfileRole(user?.profile?.role);
+  const isSeller = normalizedRole === 'seller';
 
   const fetchFeedPosts = useCallback(async () => {
     setIsLoadingFeed(true);
     setFeedError(null);
     try {
+      const feedPostSelect = `
+        *,
+        profiles (business_name, contact_person, avatar_url),
+        feed_post_media (id, post_id, storage_bucket, storage_path, media_type, sort_order)
+      `;
       let { data, error } = await supabase
         .from('feed_posts')
-        .select(`*, profiles (business_name, contact_person, avatar_url)`)
+        .select(feedPostSelect)
         .order('created_at', { ascending: false });
 
       if (error && error.message.includes('relationship')) {
         console.warn('Profiles relationship missing for feed_posts, fetching without profiles...');
-        const fallback = await supabase.from('feed_posts').select('*').order('created_at', { ascending: false });
+        const fallback = await supabase
+          .from('feed_posts')
+          .select(`*, feed_post_media (id, post_id, storage_bucket, storage_path, media_type, sort_order)`)
+          .order('created_at', { ascending: false });
         data = fallback.data;
         error = fallback.error;
       }
@@ -105,7 +124,7 @@ export default function ShopoConnectPage() {
         category: post.category,
         postType: post.post_type,
         content: post.content,
-        images: post.images || [],
+        images: selectPostImageUrls(mapCanonicalFeedMedia(supabase, post.feed_post_media), post.images),
         createdAt: post.created_at,
         likes: post.likes_count || 0,
         isLiked: false, 
@@ -223,7 +242,13 @@ export default function ShopoConnectPage() {
     setBusinessListings(prev => [newListing, ...prev]);
   };
 
+  const revokeAllPreviewUrls = useCallback(() => {
+    previewUrlsRef.current.forEach(url => URL.revokeObjectURL(url));
+    previewUrlsRef.current.clear();
+  }, []);
+
   const resetFeedForm = () => {
+    revokeAllPreviewUrls();
     setPostType('New Arrival');
     setPostContent('');
     setPostCategory('Grocery');
@@ -234,87 +259,104 @@ export default function ShopoConnectPage() {
 
   const handleFeedModalChange = (open) => {
     setShowFeedModal(open);
-    if (!open) resetFeedForm();
+    if (!open && !activeAttemptRef.current) resetFeedForm();
   };
+
 
   const handleImageSelect = (e) => {
     const files = Array.from(e.target.files);
-    if (postImages.length + files.length > 3) {
-      setFormError("You can only upload up to 3 images.");
+    const validation = validateSelectedImages([...postImages.map(image => image.file), ...files]);
+    if (!validation.ok) {
+      setFormError(validation.error);
+      e.target.value = '';
       return;
     }
     setFormError('');
-    const newImages = files.map(file => ({ file, preview: URL.createObjectURL(file) }));
+    const newImages = files.map(file => {
+      const preview = URL.createObjectURL(file);
+      previewUrlsRef.current.add(preview);
+      return { file, preview };
+    });
     setPostImages(prev => [...prev, ...newImages]);
+    e.target.value = '';
   };
 
   const removeImage = (index) => {
     setPostImages(prev => {
       const updated = [...prev];
       URL.revokeObjectURL(updated[index].preview);
+      previewUrlsRef.current.delete(updated[index].preview);
       updated.splice(index, 1);
       return updated;
     });
   };
 
-  const isFormValid = postType && postContent.trim().length > 0 && postCategory && postContent.length <= 500;
+  useEffect(() => () => revokeAllPreviewUrls(), [revokeAllPreviewUrls]);
+
+  const isFormValid = validatePostContent(postContent).ok && (!isSeller || (postType && postCategory));
 
   const handleFeedSubmit = async (e) => {
     e.preventDefault();
-    if (!isFormValid || !user) return;
+    if (submissionInFlightRef.current) return;
+    const contentValidation = validatePostContent(postContent);
+    if (!contentValidation.ok) return setFormError(contentValidation.error);
+    if (!user?.id) return setFormError('Please sign in before publishing a post.');
+    if (!isFormValid) return;
 
+    submissionInFlightRef.current = true;
     setIsSubmitting(true);
     setFormError('');
-
+    let attempt = activeAttemptRef.current;
     try {
-      const uploadedImageUrls = [];
-      if (postImages.length > 0) {
-        for (const img of postImages) {
-          const fileExt = img.file.name.split('.').pop();
-          const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-          const filePath = `${user.id}/${fileName}`;
-          const { error: uploadError } = await supabase.storage.from('feed-images').upload(filePath, img.file);
-          if (uploadError) throw uploadError;
-          const { data: { publicUrl } } = supabase.storage.from('feed-images').getPublicUrl(filePath);
-          uploadedImageUrls.push(publicUrl);
-        }
+      if (!attempt) {
+        const imageValidation = validateSelectedImages(postImages.map(image => image.file));
+        if (!imageValidation.ok) throw new Error(imageValidation.error);
+        attempt = createShopoConnectAttempt({ userId: user.id, files: postImages.map(image => image.file) });
+        activeAttemptRef.current = attempt;
       }
-
-      const { data: newPostData, error: dbError } = await supabase
-        .from('feed_posts')
-        .insert({
-          user_id: user.id,
-          post_type: postType,
-          category: postCategory,
-          content: postContent,
-          images: uploadedImageUrls
-        })
-        .select(`*, profiles (business_name, contact_person, avatar_url)`)
-        .single();
-
-      if (dbError) throw dbError;
-
-      const mappedNewPost = {
-        id: newPostData.id,
-        userName: newPostData.profiles?.business_name || newPostData.profiles?.contact_person || 'ShopoApp User',
-        userAvatar: newPostData.profiles?.avatar_url || '',
-        category: newPostData.category,
-        postType: newPostData.post_type,
-        content: newPostData.content,
-        images: newPostData.images || [],
-        createdAt: newPostData.created_at,
-        likes: 0, isLiked: false, isSaved: false, comments: []
-      };
-
-      setFeedPosts(prev => [mappedNewPost, ...prev]);
-      toast({ title: "Post Published!", className: "bg-green-50 border-green-200 text-green-900" });
-      handleFeedModalChange(false);
+      if (attempt.media.length > 0) await uploadAttemptMedia(supabase, attempt);
+      const result = await finalizeShopoConnectAttempt(supabase, {
+        attempt,
+        content: postContent,
+        category: isSeller ? postCategory : null,
+        postType: isSeller ? postType : null,
+      });
+      if (result.status === 'confirmed') {
+        activeAttemptRef.current = null;
+        resetFeedForm();
+        await fetchFeedPosts();
+        toast({ title: "Post Published!", className: "bg-green-50 border-green-200 text-green-900" });
+        setShowFeedModal(false);
+        return;
+      }
+      if (isDefinitelyUnpublishedFinalizerFailure(result, result.status === 'rejected')) {
+        await cleanupAttemptMedia(supabase, attempt);
+        activeAttemptRef.current = null;
+        const message = result.data?.code || result.error?.message || 'The post could not be published. Please try again.';
+        setFormError(message);
+        toast({ variant: "destructive", title: "Failed to publish", description: message });
+        return;
+      }
+      setFormError('We could not confirm publication. Retry to check the same submission safely.');
+      toast({ variant: "destructive", title: "Publication status unknown", description: "Retry uses the same submission safely." });
     } catch (error) {
-      toast({ variant: "destructive", title: "Failed to publish", description: error.message });
+      if (attempt?.finalizationStarted) {
+        setFormError('We could not confirm publication. Retry to check the same submission safely.');
+        toast({ variant: "destructive", title: "Publication status unknown", description: "Retry uses the same submission safely." });
+      } else {
+        if (attempt) await cleanupAttemptMedia(supabase, attempt);
+        activeAttemptRef.current = null;
+        const message = error.message || 'Failed to upload post media.';
+        setFormError(message);
+        toast({ variant: "destructive", title: "Failed to publish", description: message });
+      }
     } finally {
+      submissionInFlightRef.current = false;
       setIsSubmitting(false);
     }
   };
+
+  const hasUnresolvedAttempt = Boolean(activeAttemptRef.current);
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 pb-20">
@@ -475,23 +517,18 @@ export default function ShopoConnectPage() {
       {/* Feed Modal */}
       <Dialog open={showFeedModal} onOpenChange={handleFeedModalChange}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create Post</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleFeedSubmit} className="space-y-6 mt-4">
-            <div className="space-y-2">
-              <Label>Content <span className="text-red-500">*</span></Label>
-              <Textarea value={postContent} onChange={e => setPostContent(e.target.value)} maxLength={500} />
-            </div>
-            <div className="flex justify-end gap-3 pt-4">
-              <Button type="button" variant="outline" onClick={() => handleFeedModalChange(false)}>Cancel</Button>
-              <Button type="submit" variant="primary" disabled={!isFormValid || isSubmitting}>Post</Button>
-            </div>
+          <DialogHeader><DialogTitle>Create Post</DialogTitle></DialogHeader>
+          <form onSubmit={handleFeedSubmit} className="space-y-4 mt-4">
+            <div className="space-y-2"><Label>Content <span className="text-red-500">*</span></Label><Textarea value={postContent} onChange={e => setPostContent(e.target.value)} maxLength={500} disabled={isSubmitting || hasUnresolvedAttempt} /></div>
+            {postImages.length > 0 && <div className="grid grid-cols-3 gap-2">{postImages.map((image, index) => <div key={image.preview} className="relative"><img src={image.preview} alt={`Selected attachment ${index + 1}`} className="aspect-square w-full object-cover" /><Button type="button" size="icon" aria-label={`Remove attachment ${index + 1}`} onClick={() => removeImage(index)} disabled={isSubmitting || hasUnresolvedAttempt} className="absolute right-1 top-1"><X className="h-4 w-4" /></Button></div>)}</div>}
+            <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/webp" multiple className="hidden" onChange={handleImageSelect} disabled={isSubmitting || hasUnresolvedAttempt} />
+            <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isSubmitting || hasUnresolvedAttempt || postImages.length >= 5}><ImageIcon className="mr-2 h-4 w-4" />Photo {postImages.length ? `(${postImages.length}/5)` : ''}</Button>
+            {isSeller && <div className="grid grid-cols-2 gap-2"><Select value={postCategory} onValueChange={setPostCategory} disabled={isSubmitting || hasUnresolvedAttempt}><SelectTrigger><SelectValue placeholder="Category" /></SelectTrigger><SelectContent>{CATEGORIES.filter(category => category.name !== 'All').map(category => <SelectItem key={category.name} value={category.name}>{category.name}</SelectItem>)}</SelectContent></Select><Select value={postType} onValueChange={setPostType} disabled={isSubmitting || hasUnresolvedAttempt}><SelectTrigger><SelectValue placeholder="Post type" /></SelectTrigger><SelectContent>{POST_TYPES.map(type => <SelectItem key={type.id} value={type.id}>{type.label}</SelectItem>)}</SelectContent></Select></div>}
+            {formError && <p className="text-sm text-red-600" role="alert">{formError}</p>}
+            <div className="flex justify-end gap-3"><Button type="button" variant="outline" onClick={() => handleFeedModalChange(false)} disabled={isSubmitting}>Cancel</Button><Button type="submit" variant="primary" disabled={!isFormValid || isSubmitting}>{isSubmitting ? 'Posting...' : hasUnresolvedAttempt ? 'Retry publication' : 'Post'}</Button></div>
           </form>
         </DialogContent>
-      </Dialog>
-
-      {/* Offer Modal */}
+      </Dialog>      {/* Offer Modal */}
       <Dialog open={showOfferModal} onOpenChange={setShowOfferModal}>
         <DialogContent className="sm:max-w-[700px] max-h-[95vh] overflow-y-auto p-0">
           <div className="p-6 pb-0">
